@@ -47,24 +47,33 @@ public final class BukkitClj extends JavaPlugin {
         // Hack classloaders to make Clojure runtime behave
         ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
         ClassLoader pluginCl = BukkitClj.class.getClassLoader();
-        Thread.currentThread().setContextClassLoader(pluginCl);
         clojureClassLoader = apply(new DynamicClassLoader(pluginCl), cl -> {
             //cl.addURL(get(() -> getFile().toURI().toURL()));
         });
-        RT.init();
-        Var.pushThreadBindings(RT.map(Compiler.LOADER, clojureClassLoader));
+        try {
+            Thread.currentThread().setContextClassLoader(pluginCl);
+            RT.init();
+            Var.pushThreadBindings(RT.map(Compiler.LOADER, clojureClassLoader));
 
-        // Load Clojure & bukkitclj runtime
-        run(() -> RT.load("clojure/core"));
-        run(() -> RT.load("bukkitclj/api"));
-
-        // Restore class loader hackery
-        Thread.currentThread().setContextClassLoader(oldTCL);
+            // Load Clojure & bukkitclj runtime
+            run(() -> RT.load("clojure/core"));
+            run(() -> RT.load("bukkitclj/api"));
+        } finally {
+            // Restore class loader hackery
+            Thread.currentThread().setContextClassLoader(oldTCL);
+        }
     }
 
     @Override
     public void onEnable() {
-        loadScripts();
+        ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
+        ClassLoader pluginCl = BukkitClj.class.getClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(pluginCl);
+            loadScripts();
+        } finally {
+            Thread.currentThread().setContextClassLoader(oldTCL);
+        }
     }
 
     private List<ScriptInfo> loadScripts() {

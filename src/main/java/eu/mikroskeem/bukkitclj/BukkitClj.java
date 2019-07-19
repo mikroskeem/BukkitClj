@@ -126,6 +126,6 @@ public final class BukkitClj extends JavaPlugin {
     private static String getNamespace(Path file) {
         // TODO: Try to read `ns` from file directly rather than extracting from file name
         String fileName = file.getFileName().toString();
-        return fileName.substring(0, fileName.lastIndexOf("."));
+        return fileName.substring(0, fileName.lastIndexOf('.'));
     }
 }

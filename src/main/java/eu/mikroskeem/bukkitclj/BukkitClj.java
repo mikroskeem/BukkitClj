@@ -13,6 +13,7 @@ import clojure.lang.IFn;
 import clojure.lang.Keyword;
 import clojure.lang.Namespace;
 import clojure.lang.RT;
+import clojure.lang.Symbol;
 import clojure.lang.Var;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
@@ -61,6 +62,7 @@ public final class BukkitClj extends JavaPlugin {
             // Load Clojure & bukkitclj runtime
             run(() -> RT.load("clojure/core"));
             run(() -> RT.load("bukkitclj/api"));
+            run(() -> RT.load("bukkitclj/internal"));
         } finally {
             // Restore class loader hackery
             Thread.currentThread().setContextClassLoader(oldTCL);
@@ -89,7 +91,6 @@ public final class BukkitClj extends JavaPlugin {
                 String ns = getNamespace(scriptFile);
                 try (Reader reader = Files.newBufferedReader(scriptFile)) {
                     // Compile script and load it
-
                     script = Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
                 } catch (Compiler.CompilerException e) {
                     getSLF4JLogger().error("Failed to compile {}", scriptFile.getFileName(), e);
@@ -137,8 +138,8 @@ public final class BukkitClj extends JavaPlugin {
     }
 
     private static String getNamespace(Path file) {
-        // TODO: Try to read `ns` from file directly rather than extracting from file name
-        String fileName = file.getFileName().toString();
-        return fileName.substring(0, fileName.lastIndexOf('.'));
+        // TODO: failure handling?
+        Symbol ns = (Symbol) RT.var("bukkitclj.internal", "get-file-ns").invoke(file.toString());
+        return ns.getName();
     }
 }

@@ -16,7 +16,7 @@
 (defn on
   "Adds an event listener for specified event"
   [the-class, func]
-  (let [c (if-not (instance? the-class Class)
+  (let [c (if-not (instance? Class the-class)
             (Class/forName (.toString the-class))
             the-class)]
     (println *ns*)

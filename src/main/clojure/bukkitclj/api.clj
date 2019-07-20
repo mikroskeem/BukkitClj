@@ -13,13 +13,13 @@
   [^String name]
   (Bukkit/getPlayerExact name))
 
-(defn on
+(defmacro on
   "Adds an event listener for specified event"
-  [the-class, func]
-  (let [c (if-not (instance? Class the-class)
-            (Class/forName (.toString the-class))
-            the-class)]
-    (println *ns*)
-    (eu.mikroskeem.bukkitclj.BukkitClj/createEventListener c func)))
-
-
+  [the-class priority func]
+   `(eu.mikroskeem.bukkitclj.BukkitClj/createEventListener
+     ~*ns*
+     (if-not (instance? Class ~the-class)
+       (Class/forName (.toString ~the-class))
+       ~the-class)
+     ~priority
+     ~func))

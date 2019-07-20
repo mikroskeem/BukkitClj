@@ -10,6 +10,8 @@ import clojure.java.api.Clojure;
 import clojure.lang.Compiler;
 import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
+import clojure.lang.Keyword;
+import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Var;
 import org.bukkit.event.Event;
@@ -22,6 +24,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static eu.mikroskeem.bukkitclj.Utils.apply;
@@ -112,11 +115,21 @@ public final class BukkitClj extends JavaPlugin {
         return scripts;
     }
 
-    public static void createEventListener(Class<? extends Event> eventClass, IFn handler) {
-        // TODO: get caller class/script file
+    public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass, Keyword priorityKeyword, IFn handler) {
+        // Convert event priority
+        EventPriority priority;
+        try {
+            String priorityStr = priorityKeyword.getName().toUpperCase(Locale.ROOT);
+            priority = EventPriority.valueOf(priorityStr);
+        } catch (IllegalArgumentException e) {
+            getInstance().getSLF4JLogger().error("Function {} has invalid priority {}", handler, priorityKeyword);
+            return;
+        }
+
+        // Register listener
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureListenerFn executor = new ClojureListenerFn(handler, eventClass);
-        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, EventPriority.NORMAL, executor, plugin);
+        ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
+        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin);
     }
 
     public static BukkitClj getInstance() {

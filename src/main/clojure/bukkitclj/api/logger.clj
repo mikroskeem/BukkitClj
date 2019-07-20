@@ -1,19 +1,18 @@
 (ns bukkitclj.api.logger
-  (:import (org.slf4j Logger)
-           (eu.mikroskeem.bukkitclj BukkitClj))
+  (:import (eu.mikroskeem.bukkitclj LoggerHelper))
   (:gen-class))
 
-(defn- get-logger []
-  (.getSLF4JLogger (BukkitClj/getInstance)))
+(defmacro get-logger []
+  `(LoggerHelper/get ~*ns*))
 
-(defn debug [^String fmt & args]
-  (.error (get-logger) fmt args))
+(defmacro debug [^String fmt & args]
+  `(LoggerHelper/log "debug" (get-logger) ~fmt (into-array Object [~@args])))
 
-(defn info [^String fmt & args]
-  (.info (get-logger) fmt args))
+(defmacro info [^String fmt & args]
+  `(LoggerHelper/log "info" (get-logger) ~fmt (into-array Object [~@args])))
 
-(defn warn [^String fmt & args]
-  (.warn (get-logger) fmt args))
+(defmacro warn [^String fmt & args]
+  `(LoggerHelper/log "warn" (get-logger) ~fmt (into-array Object [~@args])))
 
-(defn error [^String fmt & args]
-  (.error (get-logger) fmt args))
+(defmacro error [^String fmt & args]
+  `(LoggerHelper/log "error" (get-logger) ~fmt (into-array Object [~@args])))

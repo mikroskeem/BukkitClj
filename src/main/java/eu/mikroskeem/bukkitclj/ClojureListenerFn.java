@@ -7,6 +7,7 @@
 package eu.mikroskeem.bukkitclj;
 
 import clojure.lang.IFn;
+import clojure.lang.Namespace;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
 import org.bukkit.event.Listener;
@@ -16,10 +17,12 @@ import org.bukkit.plugin.EventExecutor;
  * @author Mark Vainomaa
  */
 public final class ClojureListenerFn implements Listener, EventExecutor {
+    private final Namespace namespace;
     private final IFn handler;
     private final Class<? extends Event> eventClass;
 
-    public ClojureListenerFn(IFn handler, Class<? extends Event> eventClass) {
+    public ClojureListenerFn(Namespace namespace, IFn handler, Class<? extends Event> eventClass) {
+        this.namespace = namespace;
         this.handler = handler;
         this.eventClass = eventClass;
     }

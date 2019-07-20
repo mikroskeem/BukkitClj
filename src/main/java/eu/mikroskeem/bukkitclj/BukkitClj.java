@@ -15,6 +15,8 @@ import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 import clojure.lang.Var;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,6 +24,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -131,6 +135,20 @@ public final class BukkitClj extends JavaPlugin {
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
         ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
         plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin);
+    }
+
+    public static void createCommand(Namespace namespace, String commandName, IFn handler) {
+        String ns = namespace.getName().getName();
+
+        // Register command
+        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
+        plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, new Command(commandName, "", "", Collections.emptyList()) {
+            @Override
+            public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                handler.invoke(sender, Arrays.asList(args));
+                return true;
+            }
+        });
     }
 
     public static BukkitClj getInstance() {

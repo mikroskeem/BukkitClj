@@ -94,7 +94,11 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         try {
             loadingLock.writeLock().lock();
             get(() -> Files.list(this.scriptsPath)).filter(it -> it.getFileName().toString().endsWith(".clj")).forEach(scriptFile -> {
-                loadScript(scriptFile.getFileName().toString());
+                try {
+                    loadScript(scriptFile.getFileName().toString());
+                } catch (Exception e) {
+                    getSLF4JLogger().error("Failed to load {}", scriptFile, e);
+                }
             });
         } finally {
             loadingLock.writeLock().unlock();

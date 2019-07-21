@@ -19,6 +19,9 @@ import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
+import org.bukkit.permissions.Permission;
+import org.bukkit.permissions.PermissionDefault;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.Reader;
@@ -122,12 +125,13 @@ public final class BukkitClj extends JavaPlugin {
             throw new IllegalStateException("Namespace mismatch!");
         }
 
+        if (handler == null) {
+            throw new IllegalArgumentException("Function cannot be nil!");
+        }
+
         // Convert event priority
-        EventPriority priority;
-        try {
-            String priorityStr = priorityKeyword.getName().toUpperCase(Locale.ROOT);
-            priority = EventPriority.valueOf(priorityStr);
-        } catch (IllegalArgumentException e) {
+        EventPriority priority = enumMatch(priorityKeyword.getName(), EventPriority.class);
+        if (priority == null) {
             getInstance().getSLF4JLogger().error("Function {} has invalid priority {}", handler, priorityKeyword);
             return;
         }
@@ -149,11 +153,56 @@ public final class BukkitClj extends JavaPlugin {
             throw new IllegalStateException("Namespace mismatch!");
         }
 
+        if (commandName == null) {
+            throw new IllegalArgumentException("Command name cannot be nil!");
+        }
+
+        if (handler == null) {
+            throw new IllegalArgumentException("Function cannot be nil!");
+        }
+
         // Register command
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
         ClojureCommandFn command = new ClojureCommandFn(commandName, permission, handler);
         plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
         currentScript.getCommands().add(command);
+    }
+
+    public static void createPermission(Namespace namespace, String name, boolean override, Keyword def) {
+        if (currentScript == null) {
+            throw new IllegalStateException("Can only register commands at script load");
+        }
+
+        String ns = namespace.getName().getName();
+        if (!currentScript.getNamespace().equals(ns)) {
+            throw new IllegalStateException("Namespace mismatch!");
+        }
+
+        if (name == null) {
+            throw new IllegalArgumentException("Permission name cannot be nil!");
+        }
+
+        // Convert default
+        PermissionDefault permDef = enumMatch(def.getName(), PermissionDefault.class);
+        if (permDef == null) {
+            getInstance().getSLF4JLogger().error("Invalid permission {} default {}", name, def.getName());
+            return;
+        }
+
+        // Try to register
+        PluginManager plm = getInstance().getServer().getPluginManager();
+        if (plm.getPermission(name) != null) {
+            if (override) {
+                plm.removePermission(name);
+            } else {
+                getInstance().getSLF4JLogger().warn("Permission {} is already registered, skipping", name);
+                return;
+            }
+        }
+
+        Permission perm = new Permission(name, permDef);
+        plm.addPermission(perm);
+        currentScript.getPermissions().add(perm);
     }
 
     public static BukkitClj getInstance() {
@@ -164,5 +213,14 @@ public final class BukkitClj extends JavaPlugin {
         // TODO: failure handling?
         Symbol ns = (Symbol) RT.var("bukkitclj.internal", "get-file-ns").invoke(file.toString());
         return ns.getName();
+    }
+
+    private static <T extends Enum<T>> T enumMatch(String name, Class<T> enumClass) {
+        String value = name.replace('-', '_').toUpperCase(Locale.ROOT);
+        for (T enumConstant : enumClass.getEnumConstants()) {
+            if (enumConstant.name().equals(value))
+                return enumConstant;
+        }
+        return null;
     }
 }

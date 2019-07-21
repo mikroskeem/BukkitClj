@@ -8,6 +8,7 @@ package eu.mikroskeem.bukkitclj;
 
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
+import org.bukkit.permissions.Permission;
 
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -21,12 +22,14 @@ public final class ScriptInfo {
     private final Path scriptPath;
     private final List<ClojureListenerFn> listeners;
     private final List<ClojureCommandFn> commands;
+    private final List<Permission> permissions;
 
     public ScriptInfo(String namespace, Path scriptPath) {
         this.namespace = namespace;
         this.scriptPath = scriptPath;
         this.listeners = new LinkedList<>();
         this.commands = new LinkedList<>();
+        this.permissions = new LinkedList<>();
     }
 
     public String getNamespace() {
@@ -43,5 +46,9 @@ public final class ScriptInfo {
 
     public List<ClojureCommandFn> getCommands() {
         return commands;
+    }
+
+    public List<Permission> getPermissions() {
+        return permissions;
     }
 }

@@ -37,6 +37,16 @@
     (:permission ~options nil)
     ~func))
 
+(defmacro def-permission
+  "Defines a permission. Not usually needed unless you want to
+  define who has said permission by default"
+  [opts]
+  `(BukkitClj/createPermission
+    ~*ns*
+    (:name ~opts nil)
+    (:override ~opts false)
+    (:default ~opts :op)))
+
 (defn message
   "Sends a message to CommandSender"
   [^CommandSender sender ^String message]

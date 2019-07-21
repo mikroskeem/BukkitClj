@@ -18,19 +18,24 @@
 
 (defmacro on
   "Adds an event listener for specified event"
-  [the-class priority func]
+  [the-class options func]
    `(BukkitClj/createEventListener
      ~*ns*
      (if-not (instance? Class ~the-class)
        (Class/forName (.toString ~the-class))
        ~the-class)
-     ~priority
+     (:priority ~options :normal)
+     (:ignore-cancelled ~options false)
      ~func))
 
 (defmacro def-command
   "Defines a command"
-  [command-name func]
-  `(BukkitClj/createCommand ~*ns* ~command-name ~func))
+  [options func]
+  `(BukkitClj/createCommand
+    ~*ns*
+    (:name ~options nil)
+    (:permission ~options nil)
+    ~func))
 
 (defn message
   "Sends a message to CommandSender"

@@ -111,7 +111,8 @@ public final class BukkitClj extends JavaPlugin {
         return scripts;
     }
 
-    public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass, Keyword priorityKeyword, IFn handler) {
+    public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass,
+                                           Keyword priorityKeyword, boolean ignoreCancelled, IFn handler) {
         if (currentScript == null) {
             throw new IllegalStateException("Can only register listeners at script load");
         }
@@ -134,11 +135,11 @@ public final class BukkitClj extends JavaPlugin {
         // Register listener
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
         ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
-        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin);
+        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin, ignoreCancelled);
         currentScript.getListeners().add(executor);
     }
 
-    public static void createCommand(Namespace namespace, String commandName, IFn handler) {
+    public static void createCommand(Namespace namespace, String commandName, String permission, IFn handler) {
         if (currentScript == null) {
             throw new IllegalStateException("Can only register commands at script load");
         }
@@ -150,7 +151,7 @@ public final class BukkitClj extends JavaPlugin {
 
         // Register command
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureCommandFn command = new ClojureCommandFn(commandName, handler);
+        ClojureCommandFn command = new ClojureCommandFn(commandName, permission, handler);
         plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
         currentScript.getCommands().add(command);
     }

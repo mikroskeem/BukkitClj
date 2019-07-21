@@ -19,13 +19,17 @@ import java.util.Collections;
 public final class ClojureCommandFn extends Command {
     private final IFn handler;
 
-    public ClojureCommandFn(String name, IFn handler) {
+    public ClojureCommandFn(String name, String permission, IFn handler) {
         super(name, "", "", Collections.emptyList());
         this.handler = handler;
+        this.setPermission(permission);
     }
 
     @Override
     public boolean execute(CommandSender sender, String label, String[] args) {
+        if (!testPermission(sender))
+            return true;
+
         this.handler.invoke(sender, Arrays.asList(args));
         return true;
     }

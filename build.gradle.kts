@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
     java
@@ -41,7 +42,22 @@ license {
 bukkit {
     name = "BukkitClj"
     main = "eu.mikroskeem.bukkitclj.BukkitClj"
+    authors = listOf("mikroskeem")
+    description = "Clojure scripting on Bukkit"
+    website = "https://mikroskeem.eu"
     apiVersion = "1.14"
+
+    permissions {
+        create("bukkitclj.admin") {
+            default = BukkitPluginDescription.Permission.Default.OP
+        }
+    }
+
+    commands {
+        create("bukkitclj") {
+            permission = "bukkitclj.admin"
+        }
+    }
 }
 
 val shadowJar by tasks.getting(ShadowJar::class) {

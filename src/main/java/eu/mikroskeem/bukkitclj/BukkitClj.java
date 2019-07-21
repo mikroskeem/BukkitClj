@@ -15,6 +15,8 @@ import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 import clojure.lang.Var;
+import eu.mikroskeem.bukkitclj.api.ScriptManager;
+import eu.mikroskeem.bukkitclj.command.BukkitCljCommand;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.event.Event;
@@ -27,22 +29,27 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static eu.mikroskeem.bukkitclj.Utils.apply;
 import static eu.mikroskeem.bukkitclj.Utils.get;
 import static eu.mikroskeem.bukkitclj.Utils.run;
 
 /**
  * @author Mark Vainomaa
  */
-public final class BukkitClj extends JavaPlugin {
+public final class BukkitClj extends JavaPlugin implements ScriptManager {
     private Path scriptsPath;
     private ClassLoader clojureClassLoader;
-    private Map<String, ScriptInfo> scripts = new HashMap<>();
+    private final ReentrantReadWriteLock loadingLock = new ReentrantReadWriteLock();
+    private final Map<String, ScriptInfo> scripts = new HashMap<>(); // Script filename -> script info
     private static ScriptInfo currentScript = null;
 
     @Override
@@ -74,62 +81,135 @@ public final class BukkitClj extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        List<ScriptInfo> loadedScripts = loadScripts();
-        for (ScriptInfo loadedScript : loadedScripts) {
-            scripts.put(loadedScript.getNamespace(), loadedScript);
+        // Register commands
+        apply(getCommand("bukkitclj"), cmd -> {
+            BukkitCljCommand executor = new BukkitCljCommand(this);
+            cmd.setExecutor(executor);
+            cmd.setTabCompleter(executor);
+        });
+
+        // Load scripts
+        getSLF4JLogger().info("Loading scripts...");
+        long startTime = System.nanoTime();
+        try {
+            loadingLock.writeLock().lock();
+            get(() -> Files.list(this.scriptsPath)).filter(it -> it.getFileName().toString().endsWith(".clj")).forEach(scriptFile -> {
+                loadScript(scriptFile.getFileName().toString());
+            });
+        } finally {
+            loadingLock.writeLock().unlock();
         }
+        long endTime = System.nanoTime();
+        getSLF4JLogger().info("Loaded {} script(s) in {}ms!", scripts.size(), TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
     }
 
     @Override
     public void onDisable() {
         for (ScriptInfo script : scripts.values()) {
-            IFn scriptDeinitFunc = Clojure.var(script.getNamespace(), "script-deinit");
-            try {
-                scriptDeinitFunc.invoke();
-            } catch (Exception e) {
-                if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
-                    getSLF4JLogger().error("Failed to deinitialize {}", script.getScriptPath(), e);
-                    continue;
-                }
-            }
+            script.unload(false);
         }
     }
 
-    private List<ScriptInfo> loadScripts() {
-        List<ScriptInfo> scripts = new LinkedList<>();
+    @Override
+    public ScriptInfo getScript(String name) {
+        try {
+            loadingLock.readLock().lock();
+            return scripts.get(name);
+        } finally {
+            loadingLock.readLock().unlock();
+        }
+    }
 
-        // List all the script files in scripts path
-        get(() -> Files.list(this.scriptsPath)).filter(it -> it.getFileName().toString().endsWith(".clj")).forEach(scriptFile -> {
-            run(() -> {
-                Object script;
-                String ns = getNamespace(scriptFile);
-                currentScript = new ScriptInfo(ns, scriptFile);
-                try (Reader reader = Files.newBufferedReader(scriptFile)) {
-                    // Compile script and load it
-                    script = Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
-                } catch (Compiler.CompilerException e) {
-                    getSLF4JLogger().error("Failed to compile {}", scriptFile.getFileName(), e);
-                    return;
-                }
+    @Override
+    public ScriptInfo loadScript(String name) {
+        try {
+            loadingLock.writeLock().lock();
+            if (getScript(name) != null) {
+                throw new IllegalArgumentException("Given script is already loaded!");
+            }
 
-                // Initialize script if init method is present
-                IFn scriptInitFunc = Clojure.var(ns, "script-init");
+            Path scriptPath = scriptsPath.resolve(name);
+            if (Files.exists(scriptPath)) {
                 try {
-                    scriptInitFunc.invoke();
+                    ScriptInfo info = loadScriptFromFile(scriptPath);
+                    scripts.put(info.getScriptName(), info);
+                    return info;
+                } catch (Compiler.CompilerException e) {
+                    throw new RuntimeException("Failed to compile " + scriptPath.getFileName(), e);
                 } catch (Exception e) {
-                    if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
-                        getSLF4JLogger().error("Failed to initialize {}", scriptFile.getFileName(), e);
-                        return;
-                    }
+                    throw new RuntimeException("Failed to initialize " + scriptPath.getFileName(), e);
                 }
+            }
+            return null;
+        } finally {
+            loadingLock.writeLock().unlock();
+        }
+    }
 
-                // Add script to scripts list
-                scripts.add(currentScript);
-                currentScript = null;
-            });
-        });
+    @Override
+    public void unloadScript(ScriptInfo script) {
+        try {
+            loadingLock.writeLock().lock();
+            if (scripts.remove(script.getScriptName()) != script) {
+                throw new IllegalArgumentException("Given script is not loaded!");
+            }
 
-        return scripts;
+            script.unload(true);
+        } finally {
+            loadingLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public void reloadScript(String name) {
+        try {
+            loadingLock.writeLock().lock();
+
+            ScriptInfo info = scripts.get(name);
+            if (info == null) {
+                throw new IllegalArgumentException("Given script is not loaded!");
+            }
+
+            unloadScript(info);
+            loadScript(name);
+        } finally {
+            loadingLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public List<ScriptInfo> listScripts() {
+        try {
+            loadingLock.readLock().lock();
+            return Collections.unmodifiableList(new ArrayList<>(scripts.values()));
+        } finally {
+            loadingLock.readLock().unlock();
+        }
+    }
+
+    private ScriptInfo loadScriptFromFile(Path scriptFile) {
+        String ns = getNamespace(scriptFile);
+        ScriptInfo info = currentScript = new ScriptInfo(ns, scriptFile);
+
+        try (Reader reader = Files.newBufferedReader(scriptFile)) {
+            // Compile script and load it
+            Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // Initialize script if init method is present
+        IFn scriptInitFunc = Clojure.var(ns, "script-init");
+        try {
+            scriptInitFunc.invoke();
+        } catch (Exception e) {
+            if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        currentScript = null;
+        return info;
     }
 
     public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass,

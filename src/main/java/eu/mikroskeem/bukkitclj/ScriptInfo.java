@@ -11,11 +11,14 @@ import clojure.lang.IFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
 import org.bukkit.permissions.Permission;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static eu.mikroskeem.bukkitclj.BukkitClj.getInstance;
 
@@ -80,8 +83,14 @@ public final class ScriptInfo {
             }
 
             // Unregister commands
+            Map<String, Command> knownCommands = new HashMap<>(Bukkit.getCommandMap().getKnownCommands());
             for (ClojureCommandFn command : getCommands()) {
                 command.unregister(Bukkit.getCommandMap());
+                knownCommands.forEach((label, cmd) -> {
+                    if (cmd == command) {
+                        Bukkit.getCommandMap().getKnownCommands().remove(label);
+                    }
+                });
             }
 
             // Unregister permissions

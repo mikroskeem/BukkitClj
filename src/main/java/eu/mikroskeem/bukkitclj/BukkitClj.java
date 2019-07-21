@@ -273,6 +273,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         // Register command
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
         ClojureCommandFn command = new ClojureCommandFn(commandName, permission, handler);
+        command.register(plugin.getServer().getCommandMap());
         plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
         currentScript.getCommands().add(command);
     }

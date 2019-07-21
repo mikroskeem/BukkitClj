@@ -87,7 +87,7 @@ public final class BukkitClj extends JavaPlugin {
             try {
                 scriptDeinitFunc.invoke();
             } catch (Exception e) {
-                if (!e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
                     getSLF4JLogger().error("Failed to deinitialize {}", script.getScriptPath(), e);
                     continue;
                 }
@@ -117,7 +117,7 @@ public final class BukkitClj extends JavaPlugin {
                 try {
                     scriptInitFunc.invoke();
                 } catch (Exception e) {
-                    if (!e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                    if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
                         getSLF4JLogger().error("Failed to initialize {}", scriptFile.getFileName(), e);
                         return;
                     }

@@ -16,6 +16,11 @@
   [^String name]
   (Bukkit/getPlayerExact name))
 
+(defn all-players
+  "Gets all online players"
+  []
+  (Bukkit/getOnlinePlayers))
+
 (defmacro on
   "Adds an event listener for specified event"
   [the-class options func]
@@ -58,6 +63,11 @@
   (ChatColor/translateAlternateColorCodes
    (char (-> "&" .getBytes first)) ; Wow this is annoying
    message))
+
+(defn has-perm
+  "Checks if given CommandSender has permission"
+  [^CommandSender sender ^String node]
+  (.hasPermission sender node))
 
 ;(defn schedule
 ;  "Schedules a task"

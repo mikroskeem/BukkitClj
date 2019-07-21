@@ -252,7 +252,8 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         currentScript.getListeners().add(executor);
     }
 
-    public static void createCommand(Namespace namespace, String commandName, String permission, IFn handler) {
+    public static void createCommand(Namespace namespace, String commandName,
+                                     String permission, String[] aliases, IFn handler) {
         if (currentScript == null) {
             throw new IllegalStateException("Can only register commands at script load");
         }
@@ -272,7 +273,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
 
         // Register command
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureCommandFn command = new ClojureCommandFn(commandName, permission, handler);
+        ClojureCommandFn command = new ClojureCommandFn(commandName, permission, aliases, handler);
         command.register(plugin.getServer().getCommandMap());
         plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
         currentScript.getCommands().add(command);

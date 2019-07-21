@@ -40,6 +40,7 @@
     ~*ns*
     (:name ~options nil)
     (:permission ~options nil)
+    (into-array String (:aliases ~options []))
     ~func))
 
 (defmacro def-permission

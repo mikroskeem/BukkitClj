@@ -19,10 +19,11 @@ import java.util.Collections;
 public final class ClojureCommandFn extends Command {
     private final IFn handler;
 
-    public ClojureCommandFn(String name, String permission, IFn handler) {
+    public ClojureCommandFn(String name, String permission, String[] aliases, IFn handler) {
         super(name, "", "", Collections.emptyList());
         this.handler = handler;
         this.setPermission(permission);
+        this.setAliases(Arrays.asList(aliases));
     }
 
     @Override
@@ -30,7 +31,7 @@ public final class ClojureCommandFn extends Command {
         if (!testPermission(sender))
             return true;
 
-        this.handler.invoke(sender, Arrays.asList(args));
+        this.handler.invoke(sender, label, Arrays.asList(args));
         return true;
     }
 }

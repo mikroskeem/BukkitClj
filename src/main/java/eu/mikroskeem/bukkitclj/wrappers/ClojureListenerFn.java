@@ -4,7 +4,7 @@
  * This source code is proprietary software and must not be distributed and/or copied without the express permission of Mark Vainomaa
  */
 
-package eu.mikroskeem.bukkitclj;
+package eu.mikroskeem.bukkitclj.wrappers;
 
 import clojure.lang.IFn;
 import clojure.lang.Namespace;

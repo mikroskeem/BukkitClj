@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
  * @author Mark Vainomaa
  */
 public final class LoggerHelper {
+    private LoggerHelper() {}
+
     public static Logger get(Namespace ns) {
         return LoggerFactory.getLogger("BukkitClj/" + ns.getName().getName());
     }

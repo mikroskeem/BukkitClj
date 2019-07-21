@@ -15,8 +15,8 @@ import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 import clojure.lang.Var;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
+import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -24,8 +24,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +40,7 @@ public final class BukkitClj extends JavaPlugin {
     private Path scriptsPath;
     private ClassLoader clojureClassLoader;
     private Map<String, ScriptInfo> scripts = new HashMap<>();
+    private static ScriptInfo currentScript = null;
 
     @Override
     public void onLoad() {
@@ -83,6 +82,7 @@ public final class BukkitClj extends JavaPlugin {
             run(() -> {
                 Object script;
                 String ns = getNamespace(scriptFile);
+                currentScript = new ScriptInfo(ns, scriptFile);
                 try (Reader reader = Files.newBufferedReader(scriptFile)) {
                     // Compile script and load it
                     script = Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
@@ -103,7 +103,8 @@ public final class BukkitClj extends JavaPlugin {
                 }
 
                 // Add script to scripts list
-                scripts.add(new ScriptInfo(ns, scriptFile));
+                scripts.add(currentScript);
+                currentScript = null;
             });
         });
 
@@ -111,6 +112,15 @@ public final class BukkitClj extends JavaPlugin {
     }
 
     public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass, Keyword priorityKeyword, IFn handler) {
+        if (currentScript == null) {
+            throw new IllegalStateException("Can only register listeners at script load");
+        }
+
+        String ns = namespace.getName().getName();
+        if (!currentScript.getNamespace().equals(ns)) {
+            throw new IllegalStateException("Namespace mismatch!");
+        }
+
         // Convert event priority
         EventPriority priority;
         try {
@@ -125,20 +135,24 @@ public final class BukkitClj extends JavaPlugin {
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
         ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
         plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin);
+        currentScript.getListeners().add(executor);
     }
 
     public static void createCommand(Namespace namespace, String commandName, IFn handler) {
+        if (currentScript == null) {
+            throw new IllegalStateException("Can only register commands at script load");
+        }
+
         String ns = namespace.getName().getName();
+        if (!currentScript.getNamespace().equals(ns)) {
+            throw new IllegalStateException("Namespace mismatch!");
+        }
 
         // Register command
         BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, new Command(commandName, "", "", Collections.emptyList()) {
-            @Override
-            public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-                handler.invoke(sender, Arrays.asList(args));
-                return true;
-            }
-        });
+        ClojureCommandFn command = new ClojureCommandFn(commandName, handler);
+        plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
+        currentScript.getCommands().add(command);
     }
 
     public static BukkitClj getInstance() {

@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import static eu.mikroskeem.bukkitclj.Utils.apply;
 import static eu.mikroskeem.bukkitclj.Utils.get;
 import static eu.mikroskeem.bukkitclj.Utils.run;
 
@@ -55,9 +54,7 @@ public final class BukkitClj extends JavaPlugin {
         // Hack classloaders to make Clojure runtime behave
         ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
         ClassLoader pluginCl = BukkitClj.class.getClassLoader();
-        clojureClassLoader = apply(new DynamicClassLoader(pluginCl), cl -> {
-            //cl.addURL(get(() -> getFile().toURI().toURL()));
-        });
+        clojureClassLoader = new DynamicClassLoader(pluginCl);
         try {
             Thread.currentThread().setContextClassLoader(pluginCl);
             RT.init();
@@ -75,14 +72,7 @@ public final class BukkitClj extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
-        ClassLoader pluginCl = BukkitClj.class.getClassLoader();
-        try {
-            Thread.currentThread().setContextClassLoader(pluginCl);
-            loadScripts();
-        } finally {
-            Thread.currentThread().setContextClassLoader(oldTCL);
-        }
+        loadScripts();
     }
 
     private List<ScriptInfo> loadScripts() {
@@ -103,10 +93,10 @@ public final class BukkitClj extends JavaPlugin {
 
                 // Initialize script if init method is present
                 IFn scriptInitFunc = Clojure.var(ns, "script-init");
-                if (scriptInitFunc != null) {
-                    try {
-                        scriptInitFunc.invoke();
-                    } catch (Exception e) {
+                try {
+                    scriptInitFunc.invoke();
+                } catch (Exception e) {
+                    if (!e.getMessage().startsWith("Attempting to call unbound fn:")) {
                         getSLF4JLogger().error("Failed to initialize {}", scriptFile.getFileName(), e);
                         return;
                     }

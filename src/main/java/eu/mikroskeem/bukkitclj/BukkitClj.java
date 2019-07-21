@@ -26,6 +26,7 @@ import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,6 +48,7 @@ import static eu.mikroskeem.bukkitclj.Utils.run;
  */
 public final class BukkitClj extends JavaPlugin implements ScriptManager {
     private Path scriptsPath;
+    private Path scriptDataPath;
     private ClassLoader clojureClassLoader;
     private final ReentrantReadWriteLock loadingLock = new ReentrantReadWriteLock();
     private final Map<String, ScriptInfo> scripts = new HashMap<>(); // Script filename -> script info
@@ -58,6 +60,11 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         scriptsPath = getDataFolder().toPath().resolve("scripts");
         if (Files.notExists(scriptsPath)) {
             run(() -> Files.createDirectories(scriptsPath));
+        }
+
+        scriptDataPath = getDataFolder().toPath().resolve("script-data");
+        if (Files.notExists(scriptDataPath)) {
+            run(() -> Files.createDirectories(scriptDataPath));
         }
 
         // Hack classloaders to make Clojure runtime behave
@@ -305,6 +312,10 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         Permission perm = new Permission(name, permDef);
         plm.addPermission(perm);
         currentScript.getPermissions().add(perm);
+    }
+
+    public static File getScriptDataFile(Namespace namespace) {
+        return getInstance().scriptDataPath.resolve(namespace.getName().getName() + ".edn").toFile();
     }
 
     public static BukkitClj getInstance() {

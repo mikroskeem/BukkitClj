@@ -74,7 +74,25 @@ public final class BukkitClj extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        loadScripts();
+        List<ScriptInfo> loadedScripts = loadScripts();
+        for (ScriptInfo loadedScript : loadedScripts) {
+            scripts.put(loadedScript.getNamespace(), loadedScript);
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        for (ScriptInfo script : scripts.values()) {
+            IFn scriptDeinitFunc = Clojure.var(script.getNamespace(), "script-deinit");
+            try {
+                scriptDeinitFunc.invoke();
+            } catch (Exception e) {
+                if (!e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                    getSLF4JLogger().error("Failed to deinitialize {}", script.getScriptPath(), e);
+                    continue;
+                }
+            }
+        }
     }
 
     private List<ScriptInfo> loadScripts() {

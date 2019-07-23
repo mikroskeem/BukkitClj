@@ -62,6 +62,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             run(() -> Files.createDirectories(scriptsPath));
         }
 
+        // Set up scripts data directory
         scriptDataPath = getDataFolder().toPath().resolve("script-data");
         if (Files.notExists(scriptDataPath)) {
             run(() -> Files.createDirectories(scriptDataPath));

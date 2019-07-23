@@ -3,6 +3,8 @@
            (org.bukkit ChatColor)
            (org.bukkit.command CommandSender)
            (org.bukkit.entity Player)
+           (org.bukkit.event Event)
+           (org.bukkit.event Cancellable)
            (eu.mikroskeem.bukkitclj BukkitClj))
   (:gen-class))
 
@@ -32,6 +34,12 @@
      (:priority ~options :normal)
      (:ignore-cancelled ~options false)
      ~func))
+
+(defn cancel-event
+  "Cancels cancellable event"
+  [^Event event]
+  (if (instance? Cancellable event)
+    (.setCancelled event true)))
 
 (defmacro def-command
   "Defines a command"

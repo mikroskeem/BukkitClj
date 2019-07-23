@@ -45,7 +45,7 @@ bukkit {
     authors = listOf("mikroskeem")
     description = "Clojure scripting on Bukkit"
     website = "https://mikroskeem.eu"
-    apiVersion = "1.14"
+    apiVersion = "1.13"
 
     permissions {
         create("bukkitclj.admin") {

@@ -1,5 +1,5 @@
 (ns bukkitclj.api.logger
-  (:import (eu.mikroskeem.bukkitclj LoggerHelper))
+  (:import (eu.mikroskeem.bukkitclj.wrappers LoggerHelper))
   (:gen-class))
 
 (defmacro get-logger []

@@ -15,8 +15,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
 
 import java.lang.reflect.Method;
-
-import static eu.mikroskeem.bukkitclj.Utils.get;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * @author Mark Vainomaa
@@ -31,7 +31,7 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
         this.namespace = namespace;
         this.handler = handler;
         this.eventClass = eventClass;
-        this.getHandlerListMethod = get(() -> this.eventClass.getMethod("getHandlerList"));
+        this.getHandlerListMethod = getHandlerListMethod(eventClass);
     }
 
     public Class<? extends Event> getEventClass() {
@@ -39,7 +39,11 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
     }
 
     public HandlerList getEventHandlerList() {
-        return get(() -> (HandlerList) this.getHandlerListMethod.invoke(null));
+        try {
+            return (HandlerList) this.getHandlerListMethod.invoke(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get HandlerList of " + this.eventClass.getName(), e);
+        }
     }
 
     @Override
@@ -51,5 +55,16 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
             return;
 
         handler.invoke(event);
+    }
+
+    private static final Map<Class<? extends Event>, Method> handlerListMethods = new WeakHashMap<>();
+    private static Method getHandlerListMethod(Class<? extends Event> eventClass) {
+        return handlerListMethods.computeIfAbsent(eventClass, (clazz) -> {
+            try {
+                return clazz.getMethod("getHandlerList");
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException("Class " + clazz.getName() + " has no static getHandlerList method!");
+            }
+        });
     }
 }

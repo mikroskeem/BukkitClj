@@ -1,13 +1,13 @@
 (ns bukkitclj.api.data
   (:require [clojure.java.io :as io])
-  (:import (eu.mikroskeem.bukkitclj BukkitClj)
+  (:import (eu.mikroskeem.bukkitclj ScriptHelper)
            (java.io File))
   (:gen-class))
 
 (defmacro get-data-file
   "Gets script specific data file"
   []
-  `(BukkitClj/getScriptDataFile ~*ns*))
+  `(ScriptHelper/getScriptDataFile ~*ns*))
 
 (defn load-edn
   "Loads edn from file or returns nil"

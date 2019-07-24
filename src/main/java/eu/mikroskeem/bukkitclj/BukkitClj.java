@@ -10,23 +10,17 @@ import clojure.java.api.Clojure;
 import clojure.lang.Compiler;
 import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
-import clojure.lang.Keyword;
-import clojure.lang.Namespace;
 import clojure.lang.RT;
-import clojure.lang.Symbol;
 import clojure.lang.Var;
 import eu.mikroskeem.bukkitclj.api.ScriptManager;
 import eu.mikroskeem.bukkitclj.command.BukkitCljCommand;
-import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
-import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
-import org.bukkit.event.Event;
-import org.bukkit.event.EventPriority;
-import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
-import org.bukkit.plugin.PluginManager;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
 
-import java.io.File;
+import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,38 +28,47 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static eu.mikroskeem.bukkitclj.Utils.apply;
-import static eu.mikroskeem.bukkitclj.Utils.get;
-import static eu.mikroskeem.bukkitclj.Utils.run;
+import java.util.stream.Stream;
 
 /**
  * @author Mark Vainomaa
  */
 public final class BukkitClj extends JavaPlugin implements ScriptManager {
-    private Path scriptsPath;
-    private Path scriptDataPath;
     private ClassLoader clojureClassLoader;
     private final ReentrantReadWriteLock loadingLock = new ReentrantReadWriteLock();
     private final Map<String, ScriptInfo> scripts = new HashMap<>(); // Script filename -> script info
-    private static ScriptInfo currentScript = null;
+
+    static Path scriptsPath;
+    static Path scriptDataPath;
+    static ScriptInfo currentScript = null;
 
     @Override
-    public void onLoad() {
+    public void onEnable() {
         // Set up scripts directory
         scriptsPath = getDataFolder().toPath().resolve("scripts");
         if (Files.notExists(scriptsPath)) {
-            run(() -> Files.createDirectories(scriptsPath));
+            try {
+                Files.createDirectories(scriptsPath);
+            } catch (IOException e) {
+                getSLF4JLogger().error("Failed to create {} directory", scriptsPath);
+                setEnabled(false);
+                return;
+            }
         }
 
         // Set up scripts data directory
         scriptDataPath = getDataFolder().toPath().resolve("script-data");
         if (Files.notExists(scriptDataPath)) {
-            run(() -> Files.createDirectories(scriptDataPath));
+            try {
+                Files.createDirectories(scriptDataPath);
+            } catch (IOException e) {
+                getSLF4JLogger().error("Failed to create {} directory", scriptDataPath);
+                setEnabled(false);
+                return;
+            }
         }
 
         // Hack classloaders to make Clojure runtime behave
@@ -78,36 +81,37 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             Var.pushThreadBindings(RT.map(Compiler.LOADER, clojureClassLoader));
 
             // Load Clojure & bukkitclj runtime
-            run(() -> RT.load("clojure/core"));
-            run(() -> RT.load("bukkitclj/api"));
-            run(() -> RT.load("bukkitclj/internal"));
+            RT.load("clojure/core");
+            RT.load("bukkitclj/api");
+            RT.load("bukkitclj/internal");
+        } catch (Exception e) {
+            logger().error("Failed to initialize Clojure runtime", e);
+            setEnabled(false);
+            return;
         } finally {
             // Restore class loader hackery
             Thread.currentThread().setContextClassLoader(oldTCL);
         }
-    }
 
-    @Override
-    public void onEnable() {
         // Register commands
-        apply(getCommand("bukkitclj"), cmd -> {
-            BukkitCljCommand executor = new BukkitCljCommand(this);
-            cmd.setExecutor(executor);
-            cmd.setTabCompleter(executor);
-        });
+        registerCommand("bukkitclj", new BukkitCljCommand(this));
 
         // Load scripts
         getSLF4JLogger().info("Loading scripts...");
         long startTime = System.nanoTime();
-        try {
-            loadingLock.writeLock().lock();
-            get(() -> Files.list(this.scriptsPath)).filter(it -> it.getFileName().toString().endsWith(".clj")).forEach(scriptFile -> {
+        loadingLock.writeLock().lock();
+        try (Stream<Path> files = Files.list(scriptsPath)) {
+            files.filter(it -> it.getFileName().toString().endsWith(".clj")).forEach(scriptFile -> {
                 try {
                     loadScript(scriptFile.getFileName().toString());
                 } catch (Exception e) {
                     getSLF4JLogger().error("Failed to load {}", scriptFile, e);
                 }
             });
+        } catch (IOException e) {
+            getSLF4JLogger().error("Failed to list files in {}", scriptsPath, e);
+            setEnabled(false);
+            return;
         } finally {
             loadingLock.writeLock().unlock();
         }
@@ -122,6 +126,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     @Override
     public ScriptInfo getScript(String name) {
         try {
@@ -132,6 +139,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     @Override
     public ScriptInfo loadScript(String name) {
         try {
@@ -158,6 +168,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     @Override
     public void unloadScript(ScriptInfo script) {
         try {
@@ -172,6 +185,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     @Override
     public void reloadScript(String name) {
         try {
@@ -189,6 +205,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     @Override
     public List<ScriptInfo> listScripts() {
         try {
@@ -199,15 +218,13 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
-    private ScriptInfo loadScriptFromFile(Path scriptFile) {
-        String ns = getNamespace(scriptFile);
+    private ScriptInfo loadScriptFromFile(Path scriptFile) throws Exception {
+        String ns = ScriptHelper.getNamespace(scriptFile);
         ScriptInfo info = currentScript = new ScriptInfo(ns, scriptFile);
 
         try (Reader reader = Files.newBufferedReader(scriptFile)) {
             // Compile script and load it
             Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
 
         // Initialize script if init method is present
@@ -224,119 +241,23 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         return info;
     }
 
-    public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass,
-                                           Keyword priorityKeyword, boolean ignoreCancelled, IFn handler) {
-        if (currentScript == null) {
-            throw new IllegalStateException("Can only register listeners at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (handler == null) {
-            throw new IllegalArgumentException("Function cannot be nil!");
-        }
-
-        // Convert event priority
-        EventPriority priority = enumMatch(priorityKeyword.getName(), EventPriority.class);
-        if (priority == null) {
-            getInstance().getSLF4JLogger().error("Function {} has invalid priority {}", handler, priorityKeyword);
+    private void registerCommand(String name, CommandExecutor executor) {
+        PluginCommand command = getCommand(name);
+        if (command == null) {
+            logger().warn("Command '{}' not registered in plugin.yml!", name);
             return;
         }
-
-        // Register listener
-        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
-        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin, ignoreCancelled);
-        currentScript.getListeners().add(executor);
-    }
-
-    public static void createCommand(Namespace namespace, String commandName,
-                                     String permission, String[] aliases, IFn handler) {
-        if (currentScript == null) {
-            throw new IllegalStateException("Can only register commands at script load");
+        command.setExecutor(executor);
+        if (executor instanceof TabCompleter) {
+            command.setTabCompleter((TabCompleter) executor);
         }
-
-        String ns = namespace.getName().getName();
-        if (!currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (commandName == null) {
-            throw new IllegalArgumentException("Command name cannot be nil!");
-        }
-
-        if (handler == null) {
-            throw new IllegalArgumentException("Function cannot be nil!");
-        }
-
-        // Register command
-        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureCommandFn command = new ClojureCommandFn(commandName, permission, aliases, handler);
-        command.register(plugin.getServer().getCommandMap());
-        plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
-        currentScript.getCommands().add(command);
-    }
-
-    public static void createPermission(Namespace namespace, String name, boolean override, Keyword def) {
-        if (currentScript == null) {
-            throw new IllegalStateException("Can only register commands at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (name == null) {
-            throw new IllegalArgumentException("Permission name cannot be nil!");
-        }
-
-        // Convert default
-        PermissionDefault permDef = enumMatch(def.getName(), PermissionDefault.class);
-        if (permDef == null) {
-            getInstance().getSLF4JLogger().error("Invalid permission {} default {}", name, def.getName());
-            return;
-        }
-
-        // Try to register
-        PluginManager plm = getInstance().getServer().getPluginManager();
-        if (plm.getPermission(name) != null) {
-            if (override) {
-                plm.removePermission(name);
-            } else {
-                getInstance().getSLF4JLogger().warn("Permission {} is already registered, skipping", name);
-                return;
-            }
-        }
-
-        Permission perm = new Permission(name, permDef);
-        plm.addPermission(perm);
-        currentScript.getPermissions().add(perm);
-    }
-
-    public static File getScriptDataFile(Namespace namespace) {
-        return getInstance().scriptDataPath.resolve(namespace.getName().getName() + ".edn").toFile();
     }
 
     public static BukkitClj getInstance() {
         return JavaPlugin.getPlugin(BukkitClj.class);
     }
 
-    private static String getNamespace(Path file) {
-        // TODO: failure handling?
-        Symbol ns = (Symbol) RT.var("bukkitclj.internal", "get-file-ns").invoke(file.toString());
-        return ns.getName();
-    }
-
-    private static <T extends Enum<T>> T enumMatch(String name, Class<T> enumClass) {
-        String value = name.replace('-', '_').toUpperCase(Locale.ROOT);
-        for (T enumConstant : enumClass.getEnumConstants()) {
-            if (enumConstant.name().equals(value))
-                return enumConstant;
-        }
-        return null;
+    static Logger logger() {
+        return getInstance().getSLF4JLogger();
     }
 }

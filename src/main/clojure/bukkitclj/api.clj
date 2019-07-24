@@ -72,8 +72,7 @@
 (defn colorize
   "Colorizes messages using ChatColor utility"
   [^String message]
-  (-> "&" .getBytes first char ; Wow this is annoying
-      (ChatColor/translateAlternateColorCodes message)))
+  (ChatColor/translateAlternateColorCodes \& message))
 
 (defn has-perm
   "Checks if given CommandSender has permission"

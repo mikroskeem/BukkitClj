@@ -1,10 +1,8 @@
 (ns bukkitclj.api
-  (:import (org.bukkit Bukkit)
-           (org.bukkit ChatColor)
+  (:import (org.bukkit Bukkit ChatColor)
            (org.bukkit.command CommandSender)
            (org.bukkit.entity Player)
-           (org.bukkit.event Event)
-           (org.bukkit.event Cancellable)
+           (org.bukkit.event Event Cancellable)
            (eu.mikroskeem.bukkitclj BukkitClj))
   (:gen-class))
 
@@ -38,7 +36,7 @@
 (defn cancel-event
   "Cancels cancellable event"
   [^Event event]
-  (if (instance? Cancellable event)
+  (when (instance? Cancellable event)
     (.setCancelled event true)))
 
 (defmacro def-command
@@ -69,9 +67,8 @@
 (defn colorize
   "Colorizes messages using ChatColor utility"
   [^String message]
-  (ChatColor/translateAlternateColorCodes
-   (char (-> "&" .getBytes first)) ; Wow this is annoying
-   message))
+  (-> "&" .getBytes first char ; Wow this is annoying
+      (ChatColor/translateAlternateColorCodes message)))
 
 (defn has-perm
   "Checks if given CommandSender has permission"

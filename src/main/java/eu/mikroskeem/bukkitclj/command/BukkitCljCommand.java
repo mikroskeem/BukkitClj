@@ -102,6 +102,10 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
                 }
                 break;
             }
+            default: {
+                sender.sendMessage("usage: /bukkitclj <list/load/unload/reload>"); // TODO
+                return true;
+            }
         }
 
         return true;

@@ -27,7 +27,6 @@ repositories {
 
 dependencies {
     implementation("org.clojure:clojure:$clojureVersion")
-    implementation("com.pivovarit:throwing-function:$throwingFunctionVersion")
 
     compileOnly("com.destroystokyo.paper:paper-api:$paperApiVersion")
 }
@@ -62,9 +61,8 @@ bukkit {
 
 val shadowJar by tasks.getting(ShadowJar::class) {
     val target = "eu.mikroskeem.bukkitclj.lib"
-    val relocations = listOf(
+    val relocations = listOf<String>(
             //"clojure",
-            "com.pivovarit.function"
     )
     relocations.forEach {
         relocate(it, "$target.$it")

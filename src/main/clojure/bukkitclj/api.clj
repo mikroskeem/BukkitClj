@@ -2,8 +2,8 @@
   (:import (org.bukkit Bukkit ChatColor)
            (org.bukkit.command CommandSender)
            (org.bukkit.entity Player)
-           (org.bukkit.event Event Cancellable)
-           (eu.mikroskeem.bukkitclj BukkitClj))
+           (org.bukkit.event Cancellable Event)
+           (eu.mikroskeem.bukkitclj BukkitClj ScriptHelper))
   (:gen-class))
 
 (defn get-player
@@ -21,10 +21,15 @@
   []
   (Bukkit/getOnlinePlayers))
 
+(defn bukkitclj-instance
+  "Gets BukkitClj plugin instance"
+  []
+  (BukkitClj/getInstance))
+
 (defmacro on
   "Adds an event listener for specified event"
   [the-class options func]
-   `(BukkitClj/createEventListener
+   `(ScriptHelper/createEventListener
      ~*ns*
      (if-not (instance? Class ~the-class)
        (Class/forName (.toString ~the-class))
@@ -42,7 +47,7 @@
 (defmacro def-command
   "Defines a command"
   [options func]
-  `(BukkitClj/createCommand
+  `(ScriptHelper/createCommand
     ~*ns*
     (:name ~options nil)
     (:permission ~options nil)
@@ -53,7 +58,7 @@
   "Defines a permission. Not usually needed unless you want to
   define who has said permission by default"
   [opts]
-  `(BukkitClj/createPermission
+  `(ScriptHelper/createPermission
     ~*ns*
     (:name ~opts nil)
     (:override ~opts false)

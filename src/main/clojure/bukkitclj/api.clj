@@ -7,27 +7,27 @@
   (:gen-class))
 
 (defn get-player
-  "Gets online player object"
+  "Returns an online player object by name"
   [^String name]
   (Bukkit/getPlayer name))
 
 (defn get-player-exact
-  "Gets online player object by their exact name"
+  "Retruns an online player object by the player's exact name"
   [^String name]
   (Bukkit/getPlayerExact name))
 
 (defn all-players
-  "Gets all online players"
+  "Returns all online players"
   []
   (Bukkit/getOnlinePlayers))
 
 (defn bukkitclj-instance
-  "Gets BukkitClj plugin instance"
+  "Returns the BukkitClj plugin instance"
   []
   (BukkitClj/getInstance))
 
 (defmacro on
-  "Adds an event listener for specified event"
+  "Adds an event listener for the specified event"
   [the-class options func]
    `(ScriptHelper/createEventListener
      ~*ns*
@@ -39,7 +39,7 @@
      ~func))
 
 (defn cancel-event
-  "Cancels cancellable event"
+  "Cancels a cancellable event"
   [^Event event]
   (when (instance? Cancellable event)
     (.setCancelled event true)))
@@ -55,8 +55,8 @@
     ~func))
 
 (defmacro def-permission
-  "Defines a permission. Not usually needed unless you want to
-  define who has said permission by default"
+  "Defines a permission.
+  Not usually needed except when defining who has said permission by default"
   [opts]
   `(ScriptHelper/createPermission
     ~*ns*
@@ -65,17 +65,17 @@
     (:default ~opts :op)))
 
 (defn message
-  "Sends a message to CommandSender"
+  "Sends a message to a CommandSender"
   [^CommandSender sender ^String message]
   (.sendMessage sender message))
 
 (defn colorize
-  "Colorizes messages using ChatColor utility"
+  "Colorizes a message using the ChatColor utility"
   [^String message]
   (ChatColor/translateAlternateColorCodes \& message))
 
 (defn has-perm
-  "Checks if given CommandSender has permission"
+  "Returns true if the given CommandSender has the given permission"
   [^CommandSender sender ^String node]
   (.hasPermission sender node))
 

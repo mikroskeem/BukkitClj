@@ -97,7 +97,7 @@ public final class ScriptHelper {
      */
     public static void createPermission(Namespace namespace, String name, boolean override, Keyword def) {
         if (BukkitClj.currentScript == null) {
-            throw new IllegalStateException("Can only register commands at script load");
+            throw new IllegalStateException("Can only create permissions at script load");
         }
 
         String ns = namespace.getName().getName();

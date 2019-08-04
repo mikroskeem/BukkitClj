@@ -8,6 +8,8 @@ package eu.mikroskeem.bukkitclj.wrappers;
 
 import clojure.lang.IFn;
 import clojure.lang.Namespace;
+import co.aikar.timings.Timing;
+import co.aikar.timings.Timings;
 import eu.mikroskeem.bukkitclj.BukkitClj;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Event;
@@ -16,7 +18,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -56,7 +57,7 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
     }
 
     public void register() {
-        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
+        BukkitClj plugin = BukkitClj.getInstance();
         Bukkit.getServer().getPluginManager().registerEvent(eventClass, this, eventPriority, this, plugin, ignoreCancelled);
     }
 
@@ -68,7 +69,10 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
         if (!eventClass.isAssignableFrom(event.getClass()))
             return;
 
-        handler.invoke(event);
+        try (Timing t = Timings.of(BukkitClj.getInstance(),
+                "Script " + namespace.getName().getName() + " " + eventClass.getName() + " event handler")) {
+            handler.invoke(event);
+        }
     }
 
     private static final Map<Class<? extends Event>, Method> handlerListMethods = new WeakHashMap<>();

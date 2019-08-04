@@ -82,7 +82,7 @@ public final class ScriptHelper {
 
         // Register command
         BukkitClj plugin = BukkitClj.getInstance();
-        ClojureCommandFn command = new ClojureCommandFn(commandName, permission, aliases, handler);
+        ClojureCommandFn command = new ClojureCommandFn(namespace, commandName, permission, aliases, handler);
         command.register(plugin.getServer().getCommandMap());
         BukkitClj.currentScript.getCommands().add(command);
     }

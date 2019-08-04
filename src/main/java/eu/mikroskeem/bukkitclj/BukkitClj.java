@@ -227,6 +227,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
         }
 
+        // Register all gathered event handlers, commands and permissions
+        currentScript.load();
+
         // Initialize script if init method is present
         IFn scriptInitFunc = Clojure.var(ns, "script-init");
         try {

@@ -8,11 +8,15 @@ package eu.mikroskeem.bukkitclj.wrappers;
 
 import clojure.lang.IFn;
 import clojure.lang.Namespace;
+import eu.mikroskeem.bukkitclj.BukkitClj;
+import org.bukkit.Bukkit;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -26,12 +30,17 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
     private final IFn handler;
     private final Class<? extends Event> eventClass;
     private final Method getHandlerListMethod;
+    private final EventPriority eventPriority;
+    private final boolean ignoreCancelled;
 
-    public ClojureListenerFn(Namespace namespace, IFn handler, Class<? extends Event> eventClass) {
+    public ClojureListenerFn(Namespace namespace, IFn handler, Class<? extends Event> eventClass,
+                             EventPriority eventPriority, boolean ignoreCancelled) {
         this.namespace = namespace;
         this.handler = handler;
         this.eventClass = eventClass;
         this.getHandlerListMethod = getHandlerListMethod(eventClass);
+        this.eventPriority = eventPriority;
+        this.ignoreCancelled = ignoreCancelled;
     }
 
     public Class<? extends Event> getEventClass() {
@@ -44,6 +53,11 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
         } catch (Exception e) {
             throw new RuntimeException("Failed to get HandlerList of " + this.eventClass.getName(), e);
         }
+    }
+
+    public void register() {
+        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
+        Bukkit.getServer().getPluginManager().registerEvent(eventClass, this, eventPriority, this, plugin, ignoreCancelled);
     }
 
     @Override

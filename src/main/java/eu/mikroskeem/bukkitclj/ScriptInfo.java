@@ -13,9 +13,11 @@ import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.permissions.Permission;
+import org.bukkit.plugin.PluginManager;
 
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +33,7 @@ public final class ScriptInfo {
     private final String scriptName;
     private final List<ClojureListenerFn> listeners;
     private final List<ClojureCommandFn> commands;
-    private final List<Permission> permissions;
+    private final LinkedHashMap<Permission, Boolean> permissions;
 
     public ScriptInfo(String namespace, Path scriptPath) {
         this.namespace = namespace;
@@ -39,7 +41,7 @@ public final class ScriptInfo {
         this.scriptName = scriptPath.getFileName().toString();
         this.listeners = new LinkedList<>();
         this.commands = new LinkedList<>();
-        this.permissions = new LinkedList<>();
+        this.permissions = new LinkedHashMap<>();
     }
 
     public String getNamespace() {
@@ -62,8 +64,34 @@ public final class ScriptInfo {
         return commands;
     }
 
-    public List<Permission> getPermissions() {
+    public Map<Permission, Boolean> getPermissions() {
         return permissions;
+    }
+
+    public void load() {
+        for (ClojureListenerFn listener : getListeners()) {
+            listener.register();
+        }
+
+        for (ClojureCommandFn command : getCommands()) {
+            Bukkit.getServer().getCommandMap().register(command.getName(), "bukkitclj" + namespace, command);
+        }
+
+        for (Map.Entry<Permission, Boolean> entry : getPermissions().entrySet()) {
+            Permission permission = entry.getKey();
+            boolean override = entry.getValue();
+            PluginManager plm = BukkitClj.getInstance().getServer().getPluginManager();
+            if (plm.getPermission(permission.getName()) != null) {
+                if (override) {
+                    plm.removePermission(permission.getName());
+                } else {
+                    BukkitClj.logger().warn("Permission {} is already registered, skipping", permission.getName());
+                    return;
+                }
+            }
+
+            plm.addPermission(permission);
+        }
     }
 
     public void unload(boolean unregister) {
@@ -94,7 +122,7 @@ public final class ScriptInfo {
             }
 
             // Unregister permissions
-            for (Permission permission : getPermissions()) {
+            for (Permission permission : getPermissions().keySet()) {
                 Bukkit.getPluginManager().removePermission(permission);
             }
         }

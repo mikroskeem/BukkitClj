@@ -19,8 +19,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
-import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -58,9 +56,7 @@ public final class ScriptHelper {
         }
 
         // Register listener
-        BukkitClj plugin = JavaPlugin.getPlugin(BukkitClj.class);
-        ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass);
-        plugin.getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, plugin, ignoreCancelled);
+        ClojureListenerFn executor = new ClojureListenerFn(namespace, handler, eventClass, priority, ignoreCancelled);
         BukkitClj.currentScript.getListeners().add(executor);
     }
 
@@ -90,7 +86,6 @@ public final class ScriptHelper {
         BukkitClj plugin = BukkitClj.getInstance();
         ClojureCommandFn command = new ClojureCommandFn(commandName, permission, aliases, handler);
         command.register(plugin.getServer().getCommandMap());
-        plugin.getServer().getCommandMap().register(commandName, "bukkitclj" + ns, command);
         BukkitClj.currentScript.getCommands().add(command);
     }
 
@@ -118,20 +113,8 @@ public final class ScriptHelper {
             return;
         }
 
-        // Try to register
-        PluginManager plm = BukkitClj.getInstance().getServer().getPluginManager();
-        if (plm.getPermission(name) != null) {
-            if (override) {
-                plm.removePermission(name);
-            } else {
-                BukkitClj.logger().warn("Permission {} is already registered, skipping", name);
-                return;
-            }
-        }
-
         Permission perm = new Permission(name, permDef);
-        plm.addPermission(perm);
-        BukkitClj.currentScript.getPermissions().add(perm);
+        BukkitClj.currentScript.getPermissions().put(perm, override);
     }
 
     /*

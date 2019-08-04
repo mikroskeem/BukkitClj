@@ -13,10 +13,8 @@ import clojure.lang.RT;
 import clojure.lang.Symbol;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 
@@ -122,29 +120,6 @@ public final class ScriptHelper {
      */
     public static File getScriptDataFile(Namespace namespace) {
         return BukkitClj.scriptDataPath.resolve(namespace.getName().getName() + ".edn").toFile();
-    }
-
-    /*
-     * Iterates over player inventory
-     */
-    public static void iterItems(Player player, IFn predicate) {
-        itemLoop:
-        for (ItemStack itemStack : player.getInventory()) {
-            Object rawKv = predicate.invoke(player.getInventory(), itemStack);
-            String kv;
-            if (rawKv instanceof Keyword) {
-                kv = ((Keyword) rawKv).getName().toUpperCase(Locale.ROOT);
-            } else {
-                kv = "CONTINUE";
-            }
-
-            switch (kv) {
-                case "BREAK":
-                    break itemLoop;
-                case "CONTINUE":
-                default:
-            }
-        }
     }
 
     /*

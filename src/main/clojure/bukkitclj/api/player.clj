@@ -1,7 +1,6 @@
 (ns bukkitclj.api.player
   (:require [bukkitclj.api :refer [bukkitclj-instance]])
-  (:import (org.bukkit.entity Player)
-           (eu.mikroskeem.bukkitclj ScriptHelper))
+  (:import (org.bukkit.entity Player))
   (:gen-class))
 
 (defn hide-player
@@ -18,8 +17,3 @@
   "Returns whether x can see y"
   [^Player x ^Player y]
   (.canSee x y))
-
-(defn iter-items
-  "Iterates over player inventory"
-  [^Player player pred]
-  (ScriptHelper/iterItems player pred))

@@ -12,7 +12,7 @@ plugins {
 group = "eu.mikroskeem"
 version = "0.0.1-SNAPSHOT"
 
-val paperApiVersion = "1.14.3-SNAPSHOT"
+val paperApiVersion = "1.14.4-R0.1-SNAPSHOT"
 val throwingFunctionVersion = "1.5.0"
 val clojureVersion = "1.10.1"
 

@@ -126,6 +126,11 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
     }
 
+    @Override
+    public Path getScriptsDirectory() {
+        return scriptsPath;
+    }
+
     /**
      * @inheritDoc
      */

@@ -13,14 +13,24 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.util.StringUtil;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Mark Vainomaa
  */
 public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
     private final ScriptManager manager;
+    private final List<String> allSubcommands = Arrays.asList("list", "load", "unload", "reload");
 
     public BukkitCljCommand(ScriptManager manager) {
         this.manager = manager;
@@ -29,14 +39,14 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage("usage: /bukkitclj <list/load/unload/reload>"); // TODO
+            sender.sendMessage(String.format("Usage: /%s <%s>", label, String.join("/", allSubcommands)));
             return true;
         }
 
         switch (args[0]) {
             case "list": {
                 if (args.length != 1) {
-                    sender.sendMessage("usage: /bukkitclj list"); // TODO
+                    sender.sendMessage(String.format("Usage: /%s list", label));
                     return true;
                 }
 
@@ -49,7 +59,7 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
             }
             case "load": {
                 if (args.length != 2) {
-                    sender.sendMessage("usage: /bukkitclj load <script name>"); // TODO
+                    sender.sendMessage(String.format("Usage: /%s load <script file name>", label));
                     return true;
                 }
 
@@ -58,16 +68,17 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
                     if (manager.loadScript(scriptName) == null) {
                         throw new IllegalArgumentException("File does not exist");
                     }
-                    sender.sendMessage("Script '" + scriptName + "' loaded"); // TODO
+                    sender.sendMessage(String.format("Usage: /%s load <script file name>", label));
+                    sender.sendMessage("Script '" + scriptName + "' loaded successfully");
                 } catch (Exception e) {
-                    sender.sendMessage("Failed to load script '" + scriptName + "': " + e.getMessage()); // TODO
+                    sender.sendMessage("Failed to load script '" + scriptName + "': " + e.getMessage());
                     BukkitClj.getInstance().getSLF4JLogger().warn("Failed to load {}", scriptName, e);
                 }
                 break;
             }
             case "unload": {
                 if (args.length != 2) {
-                    sender.sendMessage("usage: /bukkitclj unload <script name>"); // TODO
+                    sender.sendMessage(String.format("Usage: /%s unload <script file name>", label));
                     return true;
                 }
 
@@ -75,35 +86,35 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
                 try {
                     ScriptInfo info = manager.getScript(scriptName);
                     if (info == null) {
-                        sender.sendMessage("Script '" + scriptName + "' is not loaded"); // TODO
+                        sender.sendMessage("Script '" + scriptName + "' is not loaded");
                         break;
                     }
                     manager.unloadScript(info);
-                    sender.sendMessage("Script '" + scriptName + "' unloaded"); // TODO
+                    sender.sendMessage("Script '" + scriptName + "' unloaded successfully!");
                 } catch (Exception e) {
-                    sender.sendMessage("Failed to unload script '" + scriptName + "': " + e.getMessage()); // TODO
+                    sender.sendMessage("Failed to unload script '" + scriptName + "': " + e.getMessage());
                     BukkitClj.getInstance().getSLF4JLogger().warn("Failed to load {}", scriptName, e);
                 }
                 break;
             }
             case "reload": {
                 if (args.length != 2) {
-                    sender.sendMessage("usage: /bukkitclj reload <script name>"); // TODO
+                    sender.sendMessage(String.format("Usage: /%s reload <script file name>", label));
                     return true;
                 }
 
                 String scriptName = args[1];
                 try {
                     manager.reloadScript(scriptName);
-                    sender.sendMessage("Script '" + scriptName + "' reloaded"); // TODO
+                    sender.sendMessage("Script '" + scriptName + "' reloaded successfully!");
                 } catch (Exception e) {
-                    sender.sendMessage("Failed to reload script '" + scriptName + "': " + e.getMessage()); // TODO
+                    sender.sendMessage("Failed to reload script '" + scriptName + "': " + e.getMessage());
                     BukkitClj.getInstance().getSLF4JLogger().warn("Failed to reload {}", scriptName, e);
                 }
                 break;
             }
             default: {
-                sender.sendMessage("usage: /bukkitclj <list/load/unload/reload>"); // TODO
+                sender.sendMessage(String.format("Usage: /%s <%s>", label, String.join("/", allSubcommands)));
                 return true;
             }
         }
@@ -113,6 +124,35 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return null;
+        String lastArg = args.length > 0 ? args[args.length - 1] : "";
+        Collection<String> completions = Collections.emptyList();
+        if (args.length == 1) {
+            completions = allSubcommands;
+        } else if (args.length == 2) {
+            if (args[0].equals("load")) {
+                try {
+                    List<Path> scriptFiles = Files.list(manager.getScriptsDirectory())
+                            .filter(p -> p.toString().endsWith(".clj"))
+                            .collect(Collectors.toList());
+
+                    // Exclude already loaded scripts
+                    manager.listScripts().stream()
+                            .map(ScriptInfo::getScriptPath)
+                            .forEach(scriptFiles::remove);
+
+                    completions = scriptFiles.stream()
+                            .map(Path::getFileName)
+                            .map(Path::toString)
+                            .collect(Collectors.toList());
+                } catch (IOException ignored) {}
+            } else if (args[0].equals("unload") || args[0].equals("reload")) {
+                completions = manager.listScripts().stream()
+                        .map(ScriptInfo::getScriptPath)
+                        .map(Path::getFileName)
+                        .map(Path::toString)
+                        .collect(Collectors.toList());
+            }
+        }
+        return StringUtil.copyPartialMatches(lastArg, completions, new LinkedList<>());
     }
 }

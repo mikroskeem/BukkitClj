@@ -8,12 +8,15 @@ package eu.mikroskeem.bukkitclj.api;
 
 import eu.mikroskeem.bukkitclj.ScriptInfo;
 
+import java.nio.file.Path;
 import java.util.List;
 
 /**
  * @author Mark Vainomaa
  */
 public interface ScriptManager {
+    Path getScriptsDirectory();
+
     ScriptInfo getScript(String name);
 
     ScriptInfo loadScript(String name);

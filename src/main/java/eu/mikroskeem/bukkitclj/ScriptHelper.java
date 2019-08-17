@@ -84,7 +84,36 @@ public final class ScriptHelper {
         BukkitClj plugin = BukkitClj.getInstance();
         ClojureCommandFn command = new ClojureCommandFn(namespace, commandName, permission, aliases, handler);
         command.register(plugin.getServer().getCommandMap());
-        BukkitClj.currentScript.getCommands().add(command);
+        BukkitClj.currentScript.getCommands().put(commandName, command);
+    }
+
+    public static void createCommandCompletion(Namespace namespace, String commandName, IFn handler) {
+        if (BukkitClj.currentScript == null) {
+            throw new IllegalStateException("Can only register commands at script load");
+        }
+
+        String ns = namespace.getName().getName();
+        if (!BukkitClj.currentScript.getNamespace().equals(ns)) {
+            throw new IllegalStateException("Namespace mismatch!");
+        }
+
+        if (commandName == null) {
+            throw new IllegalArgumentException("Command name cannot be nil!");
+        }
+
+        if (handler == null) {
+            throw new IllegalArgumentException("Function cannot be nil!");
+        }
+
+        // Find command and register a completion to it
+        ClojureCommandFn command = BukkitClj.currentScript.getCommands().get(commandName);
+        if (command == null) {
+            throw new IllegalArgumentException("Command '" + commandName + "' is not registered. Did you " +
+                    "define command after defining completion?");
+        }
+
+        // Set tab complete handler
+        command.setTabcompleteHandler(handler);
     }
 
     /*

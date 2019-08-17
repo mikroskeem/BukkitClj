@@ -14,8 +14,11 @@ import eu.mikroskeem.bukkitclj.BukkitClj;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Mark Vainomaa
@@ -23,6 +26,7 @@ import java.util.Collections;
 public final class ClojureCommandFn extends Command {
     private final Namespace namespace;
     private final IFn handler;
+    private IFn tabcompleteHandler;
 
     public ClojureCommandFn(Namespace namespace, String name, String permission, String[] aliases, IFn handler) {
         super(name, "", "", Collections.emptyList());
@@ -30,6 +34,13 @@ public final class ClojureCommandFn extends Command {
         this.handler = handler;
         this.setPermission(permission);
         this.setAliases(Arrays.asList(aliases));
+    }
+
+    public void setTabcompleteHandler(IFn tabcompleteHandler) {
+        if (this.tabcompleteHandler != null) {
+            throw new IllegalStateException("Tab complete handler is already set");
+        }
+        this.tabcompleteHandler = tabcompleteHandler;
     }
 
     @Override
@@ -42,5 +53,29 @@ public final class ClojureCommandFn extends Command {
             this.handler.invoke(sender, label, Arrays.asList(args));
         }
         return true;
+    }
+
+    @Override
+    public List<String> tabComplete(CommandSender sender, String label, String[] args) throws IllegalArgumentException {
+        if (args.length == 0) {
+            return Collections.emptyList();
+        }
+
+        if (tabcompleteHandler == null) {
+            return super.tabComplete(sender, label, args);
+        }
+
+        try (Timing t = Timings.of(BukkitClj.getInstance(),
+                "Script " + namespace.getName().getName() + " command '" + this.getName() + "' tab complete handler")) {
+            Object result = this.tabcompleteHandler.invoke(sender, label, Arrays.asList(args));
+            if (result instanceof List) {
+                return (List<String>) result;
+            } else if (result instanceof Collection) {
+                return new ArrayList<>((Collection<String>) result);
+            } else {
+                // Class cast exception prone, nothing for us to do here really.
+                return (List<String>) result;
+            }
+        }
     }
 }

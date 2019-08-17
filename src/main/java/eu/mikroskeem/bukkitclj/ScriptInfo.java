@@ -32,15 +32,15 @@ public final class ScriptInfo {
     private final Path scriptPath;
     private final String scriptName;
     private final List<ClojureListenerFn> listeners;
-    private final List<ClojureCommandFn> commands;
-    private final LinkedHashMap<Permission, Boolean> permissions;
+    private final Map<String, ClojureCommandFn> commands;
+    private final Map<Permission, Boolean> permissions;
 
     public ScriptInfo(String namespace, Path scriptPath) {
         this.namespace = namespace;
         this.scriptPath = scriptPath;
         this.scriptName = scriptPath.getFileName().toString();
         this.listeners = new LinkedList<>();
-        this.commands = new LinkedList<>();
+        this.commands = new LinkedHashMap<>();
         this.permissions = new LinkedHashMap<>();
     }
 
@@ -60,7 +60,7 @@ public final class ScriptInfo {
         return listeners;
     }
 
-    public List<ClojureCommandFn> getCommands() {
+    public Map<String, ClojureCommandFn> getCommands() {
         return commands;
     }
 
@@ -73,7 +73,7 @@ public final class ScriptInfo {
             listener.register();
         }
 
-        for (ClojureCommandFn command : getCommands()) {
+        for (ClojureCommandFn command : getCommands().values()) {
             Bukkit.getServer().getCommandMap().register(command.getName(), "bukkitclj" + namespace, command);
         }
 
@@ -112,7 +112,7 @@ public final class ScriptInfo {
 
             // Unregister commands
             Map<String, Command> knownCommands = new HashMap<>(Bukkit.getCommandMap().getKnownCommands());
-            for (ClojureCommandFn command : getCommands()) {
+            for (ClojureCommandFn command : getCommands().values()) {
                 command.unregister(Bukkit.getCommandMap());
                 knownCommands.forEach((label, cmd) -> {
                     if (cmd == command) {

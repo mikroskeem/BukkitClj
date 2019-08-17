@@ -54,6 +54,14 @@
     (into-array String (:aliases ~options []))
     ~func))
 
+(defmacro def-command-completion
+  "Defines a command completion"
+  [options func]
+  `(ScriptHelper/createCommandCompletion
+    ~*ns*
+    (:name ~options nil)
+    ~func))
+
 (defmacro def-permission
   "Defines a permission.
   Not usually needed except when defining who has said permission by default"

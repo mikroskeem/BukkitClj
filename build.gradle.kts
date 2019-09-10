@@ -15,6 +15,7 @@ version = "0.0.1-SNAPSHOT"
 val paperApiVersion = "1.14.4-R0.1-SNAPSHOT"
 val throwingFunctionVersion = "1.5.0"
 val clojureVersion = "1.10.1"
+val clojureAsyncVersion = "0.4.500"
 
 repositories {
     mavenCentral()
@@ -27,6 +28,7 @@ repositories {
 
 dependencies {
     implementation("org.clojure:clojure:$clojureVersion")
+    implementation("org.clojure:core.async:$clojureAsyncVersion")
 
     compileOnly("com.destroystokyo.paper:paper-api:$paperApiVersion")
 }

@@ -52,18 +52,8 @@ public final class ScriptHelper {
      */
     public static void createEventListener(Namespace namespace, Class<? extends Event> eventClass,
                                            Keyword priorityKeyword, boolean ignoreCancelled, IFn handler) {
-        if (BukkitClj.currentScript == null) {
-            throw new IllegalStateException("Can only register listeners at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!BukkitClj.currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (handler == null) {
-            throw new IllegalArgumentException("Function cannot be nil!");
-        }
+        validateScriptState(namespace, "Can only register listeners at script load");
+        validateArgument(handler, "Function cannot be nil!");
 
         // Convert event priority
         EventPriority priority = enumMatch(priorityKeyword.getName(), EventPriority.class);
@@ -82,22 +72,9 @@ public final class ScriptHelper {
      */
     public static void createCommand(Namespace namespace, String commandName,
                                      String permission, String[] aliases, IFn handler) {
-        if (BukkitClj.currentScript == null) {
-            throw new IllegalStateException("Can only register commands at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!BukkitClj.currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (commandName == null) {
-            throw new IllegalArgumentException("Command name cannot be nil!");
-        }
-
-        if (handler == null) {
-            throw new IllegalArgumentException("Function cannot be nil!");
-        }
+        validateScriptState(namespace, "Can only register commands at script load");
+        validateArgument(commandName, "Command name cannot be nil!");
+        validateArgument(handler, "Function cannot be nil!");
 
         // Register command
         BukkitClj plugin = BukkitClj.getInstance();
@@ -107,22 +84,9 @@ public final class ScriptHelper {
     }
 
     public static void createCommandCompletion(Namespace namespace, String commandName, IFn handler) {
-        if (BukkitClj.currentScript == null) {
-            throw new IllegalStateException("Can only register commands at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!BukkitClj.currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (commandName == null) {
-            throw new IllegalArgumentException("Command name cannot be nil!");
-        }
-
-        if (handler == null) {
-            throw new IllegalArgumentException("Function cannot be nil!");
-        }
+        validateScriptState(namespace, "Can only register command completions at script load");
+        validateArgument(commandName, "Command name cannot be nil!");
+        validateArgument(handler, "Function cannot be nil!");
 
         // Find command and register a completion to it
         ClojureCommandFn command = BukkitClj.currentScript.getCommands().get(commandName);
@@ -139,18 +103,8 @@ public final class ScriptHelper {
      * Creates a permission node
      */
     public static void createPermission(Namespace namespace, String name, boolean override, Keyword def) {
-        if (BukkitClj.currentScript == null) {
-            throw new IllegalStateException("Can only create permissions at script load");
-        }
-
-        String ns = namespace.getName().getName();
-        if (!BukkitClj.currentScript.getNamespace().equals(ns)) {
-            throw new IllegalStateException("Namespace mismatch!");
-        }
-
-        if (name == null) {
-            throw new IllegalArgumentException("Permission name cannot be nil!");
-        }
+        validateScriptState(namespace, "Can only create permissions at script load");
+        validateArgument(name, "Permission name cannot be nil!");
 
         // Convert default
         PermissionDefault permDef = enumMatch(def.getName(), PermissionDefault.class);
@@ -177,6 +131,22 @@ public final class ScriptHelper {
         // TODO: failure handling?
         Symbol ns = (Symbol) RT.var("bukkitclj.internal", "get-file-ns").invoke(file.toString());
         return ns.getName();
+    }
+
+    private static void validateScriptState(Namespace ns, String unsetScriptMessage) {
+        if (BukkitClj.currentScript == null) {
+            throw new IllegalStateException(unsetScriptMessage);
+        }
+
+        if (!BukkitClj.currentScript.getNamespace().equals(ns.getName().getName())) {
+            throw new IllegalStateException("Namespace mismatch!");
+        }
+    }
+
+    private static void validateArgument(Object argument, String message) {
+        if (argument == null) {
+            throw new IllegalArgumentException(message);
+        }
     }
 
     /*

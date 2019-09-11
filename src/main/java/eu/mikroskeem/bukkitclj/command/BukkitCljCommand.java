@@ -87,8 +87,7 @@ public final class BukkitCljCommand implements CommandExecutor, TabCompleter {
                     if (manager.loadScript(scriptName) == null) {
                         throw new IllegalArgumentException("File does not exist");
                     }
-                    sender.sendMessage(String.format("Usage: /%s load <script file name>", label));
-                    sender.sendMessage("Script '" + scriptName + "' loaded successfully");
+                    sender.sendMessage(String.format("Script '%s' loaded successfully", scriptName));
                 } catch (Exception e) {
                     sender.sendMessage("Failed to load script '" + scriptName + "': " + e.getMessage());
                     BukkitClj.getInstance().getSLF4JLogger().warn("Failed to load {}", scriptName, e);

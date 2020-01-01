@@ -1,7 +1,7 @@
 /*
  * This file is part of project BukkitClj, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2019 Mark Vainomaa <mikroskeem@mikroskeem.eu>
+ * Copyright (c) 2019-2020 Mark Vainomaa <mikroskeem@mikroskeem.eu>
  * Copyright (c) Contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy

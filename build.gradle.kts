@@ -32,6 +32,11 @@ dependencies {
     compileOnly("com.destroystokyo.paper:paper-api:$paperApiVersion")
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 apply(from = "clojure.gradle")
 
 license {

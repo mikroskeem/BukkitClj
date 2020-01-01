@@ -12,10 +12,9 @@ plugins {
 group = "eu.mikroskeem"
 version = "0.0.1-SNAPSHOT"
 
-val paperApiVersion = "1.14.4-R0.1-SNAPSHOT"
-val throwingFunctionVersion = "1.5.0"
+val paperApiVersion = "1.15.1-R0.1-SNAPSHOT"
 val clojureVersion = "1.10.1"
-val clojureAsyncVersion = "0.4.500"
+val clojureAsyncVersion = "0.6.532"
 
 repositories {
     mavenCentral()
@@ -46,7 +45,7 @@ bukkit {
     authors = listOf("mikroskeem")
     description = "Clojure scripting on Bukkit"
     website = "https://mikroskeem.eu"
-    apiVersion = "1.13"
+    apiVersion = "1.14"
 
     permissions {
         create("bukkitclj.admin") {

@@ -25,11 +25,14 @@
 
 package eu.mikroskeem.bukkitclj;
 
+import clojure.lang.Compiler;
+import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
 import clojure.lang.Keyword;
 import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
+import clojure.lang.Var;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.event.Event;
@@ -37,6 +40,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 
+import java.io.Closeable;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -133,6 +137,18 @@ public final class ScriptHelper {
         return ns.getName();
     }
 
+    static ContextClassloaderWrapper withContextClassloader(ClassLoader classloader) {
+        return new ContextClassloaderWrapper(classloader);
+    }
+
+    static ContextClassloaderWrapper withNewDynClassloader() {
+        DynamicClassLoader dynamicClassLoader = new DynamicClassLoader(BukkitClj.clojureClassLoader);
+        Var.pushThreadBindings(RT.map(Compiler.LOADER, dynamicClassLoader));
+        return new ContextClassloaderWrapper(dynamicClassLoader, () -> {
+            Var.popThreadBindings();
+        });
+    }
+
     private static void validateScriptState(Namespace ns, String unsetScriptMessage) {
         if (BukkitClj.currentScript == null) {
             throw new IllegalStateException(unsetScriptMessage);
@@ -159,5 +175,34 @@ public final class ScriptHelper {
                 return enumConstant;
         }
         return null;
+    }
+
+    public static class ContextClassloaderWrapper implements Closeable {
+        private final ClassLoader oldClassLoader;
+        private final ClassLoader classLoader;
+        private final Runnable extraCallback;
+
+        public ContextClassloaderWrapper(ClassLoader classLoader, Runnable extraCallback) {
+            this.oldClassLoader = Thread.currentThread().getContextClassLoader();
+            this.classLoader = classLoader;
+            this.extraCallback = extraCallback;
+            Thread.currentThread().setContextClassLoader(classLoader);
+        }
+
+        public ContextClassloaderWrapper(ClassLoader classLoader) {
+            this(classLoader, null);
+        }
+
+        public ClassLoader getClassLoader() {
+            return classLoader;
+        }
+
+        @Override
+        public void close() {
+            Thread.currentThread().setContextClassLoader(oldClassLoader);
+            if (extraCallback != null) {
+                extraCallback.run();
+            }
+        }
     }
 }

@@ -26,6 +26,7 @@
 package eu.mikroskeem.bukkitclj;
 
 import clojure.java.api.Clojure;
+import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
@@ -53,6 +54,7 @@ public final class ScriptInfo {
     private final List<ClojureListenerFn> listeners;
     private final Map<String, ClojureCommandFn> commands;
     private final Map<Permission, Boolean> permissions;
+    private DynamicClassLoader classLoader;
 
     public ScriptInfo(String namespace, Path scriptPath) {
         this.namespace = namespace;
@@ -88,6 +90,10 @@ public final class ScriptInfo {
     }
 
     public void load() {
+        if (classLoader == null) {
+            throw new IllegalStateException("Classloader is not set!");
+        }
+
         for (ClojureListenerFn listener : getListeners()) {
             listener.register();
         }
@@ -114,12 +120,14 @@ public final class ScriptInfo {
     }
 
     public void unload(boolean unregister) {
-        IFn scriptDeinitFunc = Clojure.var(getNamespace(), "script-deinit");
-        try {
-            scriptDeinitFunc.invoke();
-        } catch (Exception e) {
-            if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
-                getInstance().getSLF4JLogger().error("Failed to deinitialize {}", getScriptPath(), e);
+        try (ScriptHelper.ContextClassloaderWrapper c = ScriptHelper.withContextClassloader(classLoader)) {
+            IFn scriptDeinitFunc = Clojure.var(getNamespace(), "script-deinit");
+            try {
+                scriptDeinitFunc.invoke();
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                    getInstance().getSLF4JLogger().error("Failed to deinitialize {}", getScriptPath(), e);
+                }
             }
         }
 
@@ -145,5 +153,11 @@ public final class ScriptInfo {
                 Bukkit.getPluginManager().removePermission(permission);
             }
         }
+    }
+
+    public void setClassLoader(DynamicClassLoader classLoader) {
+        if (this.classLoader != null)
+            throw new IllegalStateException("Script classloader is already set");
+        this.classLoader = classLoader;
     }
 }

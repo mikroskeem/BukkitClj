@@ -56,7 +56,7 @@ import java.util.stream.Stream;
  * @author Mark Vainomaa
  */
 public final class BukkitClj extends JavaPlugin implements ScriptManager {
-    private ClassLoader clojureClassLoader;
+    static ClassLoader clojureClassLoader;
     private final ReentrantReadWriteLock loadingLock = new ReentrantReadWriteLock();
     private final Map<String, ScriptInfo> scripts = new HashMap<>(); // Script filename -> script info
 
@@ -246,21 +246,26 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         String ns = ScriptHelper.getNamespace(scriptFile);
         ScriptInfo info = currentScript = new ScriptInfo(ns, scriptFile);
 
-        try (Reader reader = Files.newBufferedReader(scriptFile)) {
-            // Compile script and load it
-            Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
-        }
+        try (ScriptHelper.ContextClassloaderWrapper c = ScriptHelper.withNewDynClassloader()) {
+            try (Reader reader = Files.newBufferedReader(scriptFile)) {
+                // Compile script and load it
+                Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());
+            }
 
-        // Register all gathered event handlers, commands and permissions
-        currentScript.load();
+            // Set classloader
+            currentScript.setClassLoader((DynamicClassLoader) c.getClassLoader());
 
-        // Initialize script if init method is present
-        IFn scriptInitFunc = Clojure.var(ns, "script-init");
-        try {
-            scriptInitFunc.invoke();
-        } catch (Exception e) {
-            if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
-                throw new RuntimeException(e);
+            // Register all gathered event handlers, commands and permissions
+            currentScript.load();
+
+            // Initialize script if init method is present
+            IFn scriptInitFunc = Clojure.var(ns, "script-init");
+            try {
+                scriptInitFunc.invoke();
+            } catch (Exception e) {
+                if (!(e instanceof IllegalStateException) || !e.getMessage().startsWith("Attempting to call unbound fn:")) {
+                    throw new RuntimeException(e);
+                }
             }
         }
 

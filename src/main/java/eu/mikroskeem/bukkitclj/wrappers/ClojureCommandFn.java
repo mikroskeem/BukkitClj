@@ -67,7 +67,7 @@ public final class ClojureCommandFn extends Command {
         if (!testPermission(sender))
             return true;
 
-        try (Timing t = Timings.of(BukkitClj.getInstance(),
+        try (Timing t = Timings.ofStart(BukkitClj.getInstance(),
                 "Script " + namespace.getName().getName() + " command '" + this.getName() + "'")) {
             this.handler.invoke(sender, label, Arrays.asList(args));
         }
@@ -84,7 +84,7 @@ public final class ClojureCommandFn extends Command {
             return super.tabComplete(sender, label, args);
         }
 
-        try (Timing t = Timings.of(BukkitClj.getInstance(),
+        try (Timing t = Timings.ofStart(BukkitClj.getInstance(),
                 "Script " + namespace.getName().getName() + " command '" + this.getName() + "' tab complete handler")) {
             Object result = this.tabcompleteHandler.invoke(sender, label, Arrays.asList(args));
             if (result instanceof List) {

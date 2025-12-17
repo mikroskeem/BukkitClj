@@ -3,47 +3,45 @@ import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
 
 plugins {
     java
-    id("dev.clojurephant.clojure") version "0.5.0-alpha.5"
-    id("net.minecrell.licenser") version "0.4.1"
-    id("net.minecrell.plugin-yml.bukkit") version "0.3.0"
-    id("com.github.johnrengelman.shadow") version "5.0.0"
+    id("dev.clojurephant.clojure") version "0.8.0"
+    id("dev.yumi.gradle.licenser") version "2.2.1"
+    id("net.minecrell.plugin-yml.bukkit") version "0.6.0"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 group = "eu.mikroskeem"
 version = "0.0.1-SNAPSHOT"
 
-val paperApiVersion = "1.15.1-R0.1-SNAPSHOT"
-val clojureVersion = "1.10.1"
-val clojureAsyncVersion = "0.6.532"
-val pomegranateVersion = "1.1.0"
+val paperApiVersion = "1.21.11-R0.1-SNAPSHOT"
+val clojureVersion = "1.12.4"
+val clojureAsyncVersion = "1.8.741"
+val pomegranateVersion = "1.2.25"
 
 repositories {
     mavenCentral()
-    mavenLocal()
     maven("https://clojars.org/repo")
 
-    maven("https://papermc.io/repo/repository/maven-public")
-    maven("https://repo.wut.ee/repository/vapeout-repo")
+    maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
     implementation("org.clojure:clojure:$clojureVersion")
     implementation("org.clojure:core.async:$clojureAsyncVersion")
-    implementation("com.cemerick:pomegranate:$pomegranateVersion")
+    implementation("clj-commons:pomegranate:$pomegranateVersion")
 
-    compileOnly("com.destroystokyo.paper:paper-api:$paperApiVersion")
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 apply(from = "clojure.gradle")
 
 license {
-    header = rootProject.file("etc/HEADER")
-    filter.include("**/*.java")
+    rule(file("etc/HEADER"))
+
+    include("**/*.java")
 }
 
 bukkit {
@@ -52,7 +50,7 @@ bukkit {
     authors = listOf("mikroskeem")
     description = "Clojure scripting on Bukkit"
     website = "https://mikroskeem.eu"
-    apiVersion = "1.14"
+    apiVersion = "1.21.10"
 
     permissions {
         create("bukkitclj.admin") {
@@ -77,6 +75,10 @@ val shadowJar by tasks.getting(ShadowJar::class) {
     }
 
     exclude("META-INF/maven/**")
+
+    manifest {
+        attributes["paperweight-mappings-namespace"] = "mojang"
+    }
 }
 
 tasks["build"].dependsOn(shadowJar)

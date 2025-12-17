@@ -27,9 +27,6 @@ package eu.mikroskeem.bukkitclj.wrappers;
 
 import clojure.lang.IFn;
 import clojure.lang.Namespace;
-import co.aikar.timings.Timing;
-import co.aikar.timings.Timings;
-import eu.mikroskeem.bukkitclj.BukkitClj;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
@@ -67,11 +64,13 @@ public final class ClojureCommandFn extends Command {
         if (!testPermission(sender))
             return true;
 
-        try (Timing t = Timings.ofStart(BukkitClj.getInstance(),
-                "Script " + namespace.getName().getName() + " command '" + this.getName() + "'")) {
-            this.handler.invoke(sender, label, Arrays.asList(args));
+        
+        Object result = this.handler.invoke(sender, label, Arrays.asList(args));
+        if (result instanceof Boolean) {
+            return (Boolean) result;
+        } else {
+            return true;
         }
-        return true;
     }
 
     @Override
@@ -84,17 +83,14 @@ public final class ClojureCommandFn extends Command {
             return super.tabComplete(sender, label, args);
         }
 
-        try (Timing t = Timings.ofStart(BukkitClj.getInstance(),
-                "Script " + namespace.getName().getName() + " command '" + this.getName() + "' tab complete handler")) {
-            Object result = this.tabcompleteHandler.invoke(sender, label, Arrays.asList(args));
-            if (result instanceof List) {
-                return (List<String>) result;
-            } else if (result instanceof Collection) {
-                return new ArrayList<>((Collection<String>) result);
-            } else {
-                // Class cast exception prone, nothing for us to do here really.
-                return (List<String>) result;
-            }
+        Object result = this.tabcompleteHandler.invoke(sender, label, Arrays.asList(args));
+        if (result instanceof List) {
+            return (List<String>) result;
+        } else if (result instanceof Collection) {
+            return new ArrayList<>((Collection<String>) result);
+        } else {
+            // Class cast exception prone, nothing for us to do here really.
+            return (List<String>) result;
         }
     }
 }

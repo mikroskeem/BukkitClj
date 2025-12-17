@@ -88,10 +88,8 @@ public final class ClojureListenerFn implements Listener, EventExecutor {
         if (!eventClass.isAssignableFrom(event.getClass()))
             return;
 
-        try (Timing t = Timings.ofStart(BukkitClj.getInstance(),
-                "Script " + namespace.getName().getName() + " " + eventClass.getName() + " event handler")) {
-            handler.invoke(event);
-        }
+        
+        handler.invoke(event);
     }
 
     private static final Map<Class<? extends Event>, Method> handlerListMethods = new WeakHashMap<>();

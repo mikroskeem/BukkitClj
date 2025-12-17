@@ -116,7 +116,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         registerCommand("bukkitclj", new BukkitCljCommand(this));
 
         // Load scripts
-        getSLF4JLogger().info("Loading scripts...");
+        logger().info("Loading scripts...");
         long startTime = System.nanoTime();
         loadingLock.writeLock().lock();
         try (Stream<Path> files = Files.list(scriptsPath)) {
@@ -124,18 +124,18 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
                 try {
                     loadScript(scriptFile.getFileName().toString());
                 } catch (Exception e) {
-                    getSLF4JLogger().error("Failed to load {}", scriptFile, e);
+                    logger().error("Failed to load {}", scriptFile, e);
                 }
             });
         } catch (IOException e) {
-            getSLF4JLogger().error("Failed to list files in {}", scriptsPath, e);
+            logger().error("Failed to list files in {}", scriptsPath, e);
             setEnabled(false);
             return;
         } finally {
             loadingLock.writeLock().unlock();
         }
         long endTime = System.nanoTime();
-        getSLF4JLogger().info("Loaded {} script(s) in {}ms!", scripts.size(), TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
+        logger().info("Loaded {} script(s) in {}ms!", scripts.size(), TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
     }
 
     @Override

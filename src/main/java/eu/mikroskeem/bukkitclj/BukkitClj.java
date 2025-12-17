@@ -62,6 +62,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
 
     static Path scriptsPath;
     static Path scriptDataPath;
+    static Path cljLibPath;
     static ScriptInfo currentScript = null;
 
     @Override
@@ -72,7 +73,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             try {
                 Files.createDirectories(scriptsPath);
             } catch (IOException e) {
-                getSLF4JLogger().error("Failed to create {} directory", scriptsPath);
+                logger().error("Failed to create {} directory", scriptsPath);
                 setEnabled(false);
                 return;
             }
@@ -84,7 +85,19 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             try {
                 Files.createDirectories(scriptDataPath);
             } catch (IOException e) {
-                getSLF4JLogger().error("Failed to create {} directory", scriptDataPath);
+                logger().error("Failed to create {} directory", scriptDataPath);
+                setEnabled(false);
+                return;
+            }
+        }
+
+        // Set up clj-lib directory for local Clojure library files
+        cljLibPath = scriptsPath.resolve("clj-lib");
+        if (Files.notExists(cljLibPath)) {
+            try {
+                Files.createDirectories(cljLibPath);
+            } catch (IOException e) {
+                logger().error("Failed to create {} directory", cljLibPath);
                 setEnabled(false);
                 return;
             }

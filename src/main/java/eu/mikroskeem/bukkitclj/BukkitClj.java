@@ -56,7 +56,7 @@ import java.util.stream.Stream;
  * @author Mark Vainomaa
  */
 public final class BukkitClj extends JavaPlugin implements ScriptManager {
-    static ClassLoader clojureClassLoader;
+    public static DynamicClassLoader clojureClassLoader;
     private final ReentrantReadWriteLock loadingLock = new ReentrantReadWriteLock();
     private final Map<String, ScriptInfo> scripts = new HashMap<>(); // Script filename -> script info
 
@@ -109,7 +109,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         clojureClassLoader = new DynamicClassLoader(pluginCl);
 
         try {
-            ((DynamicClassLoader) clojureClassLoader).addURL(cljLibPath.toUri().toURL());
+            clojureClassLoader.addURL(cljLibPath.toUri().toURL());
         } catch (Exception e) {
             throw new RuntimeException("Failed to add clj-lib directory to classpath", e);
         }
@@ -117,12 +117,13 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         try {
             Thread.currentThread().setContextClassLoader(pluginCl);
             RT.init();
-            Var.pushThreadBindings(RT.map(Compiler.LOADER, clojureClassLoader));
 
             // Load Clojure & bukkitclj runtime
             RT.load("clojure/core");
             RT.load("bukkitclj/api");
             RT.load("bukkitclj/internal");
+
+            Var.pushThreadBindings(RT.map(Compiler.LOADER, clojureClassLoader));
         } catch (Exception e) {
             logger().error("Failed to initialize Clojure runtime", e);
             setEnabled(false);

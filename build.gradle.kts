@@ -75,6 +75,9 @@ val shadowJar by tasks.getting(ShadowJar::class) {
     }
 
     exclude("META-INF/maven/**")
+    // Do not include pprint AOTed classes, they break classloader chain
+    // clojure/pprint/proxy$java.io.Writer*.class to be exact
+    exclude("clojure/pprint/**/*.class")
 
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"

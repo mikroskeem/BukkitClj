@@ -106,7 +106,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         // Hack classloaders to make Clojure runtime behave
         ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
         ClassLoader pluginCl = BukkitClj.class.getClassLoader();
-        clojureClassLoader = new DynamicClassLoader(pluginCl);
+        clojureClassLoader = new NamedDynamicClassLoader(pluginCl, "root clojure classloader");
 
         try {
             clojureClassLoader.addURL(cljLibPath.toUri().toURL());
@@ -267,7 +267,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         String ns = ScriptHelper.getNamespace(scriptFile);
         ScriptInfo info = currentScript = new ScriptInfo(ns, scriptFile);
 
-        try (ScriptHelper.ContextClassloaderWrapper c = ScriptHelper.withNewDynClassloader()) {
+        try (ScriptHelper.ContextClassloaderWrapper c = ScriptHelper.withNewDynClassloader(info)) {
             try (Reader reader = Files.newBufferedReader(scriptFile)) {
                 // Compile script and load it
                 Compiler.load(reader, scriptFile.toString(), scriptFile.getFileName().toString());

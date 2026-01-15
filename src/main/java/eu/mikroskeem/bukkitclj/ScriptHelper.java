@@ -141,8 +141,9 @@ public final class ScriptHelper {
         return new ContextClassloaderWrapper(classloader);
     }
 
-    static ContextClassloaderWrapper withNewDynClassloader() {
-        DynamicClassLoader dynamicClassLoader = new DynamicClassLoader(BukkitClj.clojureClassLoader);
+    static ContextClassloaderWrapper withNewDynClassloader(ScriptInfo info) {
+        String name = "ScriptClassLoader[" + info.getScriptName() + " (" + info.getNamespace() + ")]";
+        DynamicClassLoader dynamicClassLoader = new NamedDynamicClassLoader(BukkitClj.clojureClassLoader, name);
         Var.pushThreadBindings(RT.map(Compiler.LOADER, dynamicClassLoader));
         return new ContextClassloaderWrapper(dynamicClassLoader, () -> {
             Var.popThreadBindings();

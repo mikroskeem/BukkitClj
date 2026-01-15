@@ -107,6 +107,13 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         ClassLoader oldTCL = Thread.currentThread().getContextClassLoader();
         ClassLoader pluginCl = BukkitClj.class.getClassLoader();
         clojureClassLoader = new DynamicClassLoader(pluginCl);
+
+        try {
+            ((DynamicClassLoader) clojureClassLoader).addURL(cljLibPath.toUri().toURL());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to add clj-lib directory to classpath", e);
+        }
+
         try {
             Thread.currentThread().setContextClassLoader(pluginCl);
             RT.init();

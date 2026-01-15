@@ -143,13 +143,6 @@ public final class ScriptHelper {
 
     static ContextClassloaderWrapper withNewDynClassloader() {
         DynamicClassLoader dynamicClassLoader = new DynamicClassLoader(BukkitClj.clojureClassLoader);
-
-        try {
-            dynamicClassLoader.addURL(BukkitClj.cljLibPath.toUri().toURL());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add clj-lib directory to classpath", e);
-        }
-
         Var.pushThreadBindings(RT.map(Compiler.LOADER, dynamicClassLoader));
         return new ContextClassloaderWrapper(dynamicClassLoader, () -> {
             Var.popThreadBindings();

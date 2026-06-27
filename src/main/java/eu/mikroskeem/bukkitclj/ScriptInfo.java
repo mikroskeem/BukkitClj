@@ -28,6 +28,7 @@ package eu.mikroskeem.bukkitclj;
 import clojure.java.api.Clojure;
 import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
+import clojure.lang.Symbol;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
 import org.bukkit.Bukkit;
@@ -152,7 +153,14 @@ public final class ScriptInfo {
             for (Permission permission : getPermissions().keySet()) {
                 Bukkit.getPluginManager().removePermission(permission);
             }
+
+            // Drop the namespace so its Vars (and the classes backing them) can be collected.
+            // Skipped on shutdown (unregister == false) since the JVM is going away anyway.
+            Clojure.var("clojure.core", "remove-ns").invoke(Symbol.intern(namespace));
         }
+
+        // Release the script's classloader so it and its generated classes can be garbage collected
+        this.classLoader = null;
     }
 
     public void setClassLoader(DynamicClassLoader classLoader) {

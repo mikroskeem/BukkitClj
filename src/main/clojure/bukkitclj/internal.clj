@@ -1,10 +1,14 @@
 (ns bukkitclj.internal
   (:gen-class))
 
-; Thanks to @eallik for this :)
-(defn get-file-ns [file-path]
-  (let [sexps (load-string (str "'(" (slurp file-path) ")"))]
-    (second (first sexps))))
+(defn get-file-ns
+  "Reads the namespace symbol from a Clojure script without evaluating it."
+  [file-path]
+  (let [form (binding [*read-eval* false]
+               (read-string (slurp file-path)))]
+    (when-not (and (seq? form) (= 'ns (first form)))
+      (throw (ex-info "Script must begin with an (ns ...) form" {:file file-path})))
+    (second form)))
 
 (defn get-clojure-class-loader
   "Returns the root Clojure class loader shared by all scripts"

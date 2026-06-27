@@ -266,6 +266,16 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
 
     private ScriptInfo loadScriptFromFile(Path scriptFile) throws Exception {
         String ns = ScriptHelper.getNamespace(scriptFile);
+
+        // Reject scripts that reuse an already-loaded namespace; they would clobber each other
+        // through Clojure's global namespace registry.
+        for (ScriptInfo existing : scripts.values()) {
+            if (existing.getNamespace().equals(ns)) {
+                throw new IllegalStateException("Namespace '" + ns + "' is already loaded by script "
+                        + existing.getScriptName());
+            }
+        }
+
         ScriptInfo info = currentScript = new ScriptInfo(ns, scriptFile);
 
         try (ScriptHelper.ContextClassloaderWrapper c = ScriptHelper.withNewDynClassloader(info)) {

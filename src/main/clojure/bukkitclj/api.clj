@@ -62,6 +62,29 @@
     (:name ~options nil)
     ~func))
 
+(defmacro def-brigadier-command
+  "Defines a Brigadier command from a built LiteralCommandNode, or a LiteralArgumentBuilder
+   (which is built automatically). The command literal/tree, executors, suggestions and
+   permission gating all live in the node itself.
+
+   options:
+     :description - optional help description
+     :aliases     - optional vector of alias literals
+
+   Brigadier commands are registered through Paper's command lifecycle. They go live at startup
+   and are re-registered on every server reload; a runtime script (re)load triggers that reload
+   automatically, so they hot-reload like ordinary def-command commands."
+  [options node]
+  `(let [node# ~node
+         node# (if (instance? com.mojang.brigadier.tree.LiteralCommandNode node#)
+                 node#
+                 (.build ^com.mojang.brigadier.builder.LiteralArgumentBuilder node#))]
+     (ScriptHelper/createBrigadierCommand
+       ~*ns*
+       node#
+       (:description ~options nil)
+       (into-array String (:aliases ~options [])))))
+
 (defmacro def-permission
   "Defines a permission.
   Not usually needed except when defining who has said permission by default"

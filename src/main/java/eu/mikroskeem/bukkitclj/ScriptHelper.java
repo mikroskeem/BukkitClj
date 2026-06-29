@@ -33,8 +33,10 @@ import clojure.lang.Namespace;
 import clojure.lang.RT;
 import clojure.lang.Symbol;
 import clojure.lang.Var;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.permissions.Permission;
@@ -43,6 +45,7 @@ import org.bukkit.permissions.PermissionDefault;
 import java.io.Closeable;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -85,6 +88,26 @@ public final class ScriptHelper {
         ClojureCommandFn command = new ClojureCommandFn(namespace, commandName, permission, aliases, handler);
         command.register(plugin.getServer().getCommandMap());
         BukkitClj.currentScript.getCommands().put(commandName, command);
+    }
+
+    /*
+     * Collects a Brigadier command (a built LiteralCommandNode) defined while a script loads.
+     * Actual registration happens through Paper's LifecycleEvents.COMMANDS registrar; see
+     * ScriptInfo.BrigadierCommand and BukkitClj's lifecycle handler.
+     */
+    @SuppressWarnings("unchecked")
+    public static void createBrigadierCommand(Namespace namespace, Object node,
+                                              String description, String[] aliases) {
+        validateScriptState(namespace, "Can only register commands at script load");
+        validateArgument(node, "Command node cannot be nil!");
+        if (!(node instanceof LiteralCommandNode<?>)) {
+            throw new IllegalArgumentException("Brigadier command must be a LiteralCommandNode, was "
+                    + node.getClass().getName());
+        }
+
+        ScriptInfo.BrigadierCommand command = new ScriptInfo.BrigadierCommand(
+                (LiteralCommandNode<CommandSourceStack>) node, description, List.of(aliases));
+        BukkitClj.currentScript.getBrigadierCommands().add(command);
     }
 
     public static void createCommandCompletion(Namespace namespace, String commandName, IFn handler) {

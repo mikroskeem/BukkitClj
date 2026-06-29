@@ -33,6 +33,9 @@ import clojure.lang.RT;
 import clojure.lang.Var;
 import eu.mikroskeem.bukkitclj.api.ScriptManager;
 import eu.mikroskeem.bukkitclj.command.BukkitCljCommand;
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
@@ -64,6 +67,14 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
     static Path scriptDataPath;
     static Path cljLibPath;
     static ScriptInfo currentScript = null;
+
+    // Brigadier commands can only be registered from Paper's LifecycleEvents.COMMANDS handler.
+    // commandsReady flips true once the initial startup load is done; after that, a script (re)load
+    // that touches brigadier commands re-fires that event via Bukkit.reloadData(). deferBrigadierRefresh
+    // coalesces the unload+load of a single reloadScript into one reloadData. Both are only touched
+    // under loadingLock's write lock.
+    private volatile boolean commandsReady = false;
+    private boolean deferBrigadierRefresh = false;
 
     @Override
     public void onEnable() {
@@ -137,6 +148,23 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         // Register commands
         registerCommand("bukkitclj", new BukkitCljCommand(this));
 
+        // Drain every loaded script's Brigadier commands into Paper's registrar whenever the COMMANDS
+        // lifecycle fires. It reads the live scripts map, so this single persistent handler also covers
+        // /minecraft:reload and the reloadData() we trigger after a runtime script (re)load.
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            Commands registrar = event.registrar();
+            for (ScriptInfo script : listScripts()) {
+                for (ScriptInfo.BrigadierCommand command : script.getBrigadierCommands()) {
+                    try {
+                        registrar.register(command.node(), command.description(), command.aliases());
+                    } catch (Exception e) {
+                        logger().error("Failed to register Brigadier command '{}' from script {}",
+                                command.node().getLiteral(), script.getScriptName(), e);
+                    }
+                }
+            }
+        });
+
         // Load scripts
         logger().info("Loading scripts...");
         long startTime = System.nanoTime();
@@ -158,6 +186,10 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
         }
         long endTime = System.nanoTime();
         logger().info("Loaded {} script(s) in {}ms!", scripts.size(), TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
+
+        // The startup COMMANDS lifecycle fires after onEnable, picking up everything loaded above.
+        // From here on, runtime (re)loads must re-fire it themselves via refreshBrigadierCommands().
+        commandsReady = true;
     }
 
     @Override
@@ -190,6 +222,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
      */
     @Override
     public ScriptInfo loadScript(String name) {
+        boolean touchedBrigadier = false;
         try {
             loadingLock.writeLock().lock();
             if (getScript(name) != null) {
@@ -201,6 +234,7 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
                 try {
                     ScriptInfo info = loadScriptFromFile(scriptPath);
                     scripts.put(info.getScriptName(), info);
+                    touchedBrigadier = !info.getBrigadierCommands().isEmpty();
                     return info;
                 } catch (Compiler.CompilerException e) {
                     throw new RuntimeException("Failed to compile " + scriptPath.getFileName(), e);
@@ -211,6 +245,9 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
             return null;
         } finally {
             loadingLock.writeLock().unlock();
+            if (touchedBrigadier) {
+                refreshBrigadierCommands();
+            }
         }
     }
 
@@ -219,15 +256,20 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
      */
     @Override
     public void unloadScript(ScriptInfo script) {
+        boolean touchedBrigadier = false;
         try {
             loadingLock.writeLock().lock();
             if (scripts.remove(script.getScriptName()) != script) {
                 throw new IllegalArgumentException("Given script is not loaded!");
             }
 
+            touchedBrigadier = !script.getBrigadierCommands().isEmpty();
             script.unload(true);
         } finally {
             loadingLock.writeLock().unlock();
+            if (touchedBrigadier) {
+                refreshBrigadierCommands();
+            }
         }
     }
 
@@ -236,18 +278,28 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
      */
     @Override
     public void reloadScript(String name) {
+        boolean previousDefer = deferBrigadierRefresh;
+        boolean touchedBrigadier = false;
         try {
             loadingLock.writeLock().lock();
+            // Suppress the nested unload/load refreshes so the swap re-fires COMMANDS only once.
+            deferBrigadierRefresh = true;
 
             ScriptInfo info = scripts.get(name);
             if (info == null) {
                 throw new IllegalArgumentException("Given script is not loaded!");
             }
 
+            touchedBrigadier = !info.getBrigadierCommands().isEmpty();
             unloadScript(info);
-            loadScript(name);
+            ScriptInfo reloaded = loadScript(name);
+            touchedBrigadier |= reloaded != null && !reloaded.getBrigadierCommands().isEmpty();
         } finally {
+            deferBrigadierRefresh = previousDefer;
             loadingLock.writeLock().unlock();
+            if (touchedBrigadier) {
+                refreshBrigadierCommands();
+            }
         }
     }
 
@@ -303,6 +355,24 @@ public final class BukkitClj extends JavaPlugin implements ScriptManager {
 
         currentScript = null;
         return info;
+    }
+
+    /**
+     * Re-fires Paper's COMMANDS lifecycle so Brigadier commands gathered by a runtime script (re)load
+     * go live, by reloading server data. No-ops during the initial startup load (the lifecycle fires on
+     * its own afterwards) and while a reloadScript is coalescing its unload+load. reloadData() must run
+     * on the main thread.
+     */
+    private void refreshBrigadierCommands() {
+        if (!commandsReady || deferBrigadierRefresh) {
+            return;
+        }
+
+        if (Bukkit.isPrimaryThread()) {
+            Bukkit.reloadData();
+        } else {
+            Bukkit.getScheduler().runTask(this, Bukkit::reloadData);
+        }
     }
 
     private void registerCommand(String name, CommandExecutor executor) {

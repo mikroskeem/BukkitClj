@@ -29,8 +29,10 @@ import clojure.java.api.Clojure;
 import clojure.lang.DynamicClassLoader;
 import clojure.lang.IFn;
 import clojure.lang.Symbol;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureCommandFn;
 import eu.mikroskeem.bukkitclj.wrappers.ClojureListenerFn;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.permissions.Permission;
@@ -54,6 +56,7 @@ public final class ScriptInfo {
     private final String scriptName;
     private final List<ClojureListenerFn> listeners;
     private final Map<String, ClojureCommandFn> commands;
+    private final List<BrigadierCommand> brigadierCommands;
     private final Map<Permission, Boolean> permissions;
     private DynamicClassLoader classLoader;
 
@@ -63,8 +66,19 @@ public final class ScriptInfo {
         this.scriptName = scriptPath.getFileName().toString();
         this.listeners = new LinkedList<>();
         this.commands = new LinkedHashMap<>();
+        this.brigadierCommands = new LinkedList<>();
         this.permissions = new LinkedHashMap<>();
     }
+
+    /**
+     * A Brigadier command gathered while a script loads. Unlike legacy {@link ClojureCommandFn}s
+     * (registered straight into the command map), these can only be registered through Paper's
+     * {@code LifecycleEvents.COMMANDS} registrar, so they are merely collected here and drained by
+     * {@link BukkitClj}'s lifecycle handler when that event fires (startup, {@code /minecraft:reload},
+     * or a {@code Bukkit.reloadData()} the loader triggers after a runtime script (re)load).
+     */
+    public record BrigadierCommand(LiteralCommandNode<CommandSourceStack> node, String description,
+                                   List<String> aliases) {}
 
     public String getNamespace() {
         return namespace;
@@ -84,6 +98,10 @@ public final class ScriptInfo {
 
     public Map<String, ClojureCommandFn> getCommands() {
         return commands;
+    }
+
+    public List<BrigadierCommand> getBrigadierCommands() {
+        return brigadierCommands;
     }
 
     public Map<Permission, Boolean> getPermissions() {
